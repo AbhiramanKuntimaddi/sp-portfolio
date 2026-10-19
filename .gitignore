@@ -33,3 +33,4 @@ next-env.d.ts
 # Design Lab, synced from ../DesignLab (dev only; .design-lab/stub.tsx and the types are committed)
 /.design-lab/lab/
 /.design-lab/state.json
+_archive/previous-draft-2026-06.tar.gz

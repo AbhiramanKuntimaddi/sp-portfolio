@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { gsap } from "gsap";
-import { useGSAP } from "@gsap/react";
-import { SITE, SWARAS } from "@/lib/content";
-import { getLenis, glide } from "@/lib/smoothScroll";
+import { SITE } from "@/lib/content";
+import { getLenis, glide, withLenis } from "@/lib/smoothScroll";
 import { onSound, resonance } from "@/lib/resonance";
 import { setSoundOn } from "@/lib/sound";
 
@@ -56,68 +54,60 @@ export function SoundToggle({ className = "" }: { className?: string }) {
   );
 }
 
-/**
- * The string: a hairline between the name and the controls that is a real
- * standing wave — one loop per step up the scale (Sa = 1 … upper Sa = 8). It
- * shivers on each pluck, swells with the music and sways while you bow.
+/*
+ * The header gets out of the way: it rests over the hero, slides up as you
+ * read down the page, and returns — on a soft fade to the page — the moment
+ * you scroll back up (or tab into it).
  */
-function HeaderString() {
-  const pathRef = useRef<SVGPathElement>(null);
-  const labelRef = useRef<HTMLSpanElement>(null);
-
-  useGSAP(() => {
-    const POINTS = 96;
-    let amp = 0;
-    let phase = 0;
-    let shown = -1;
-    const draw = (_t: number, dt: number) => {
-      const path = pathRef.current;
-      if (!path) return;
-      const loops = Math.max(1, resonance.swara + 1);
-      const target = 0.6 + resonance.pulse * 3.2 + resonance.level * 5 + resonance.morph * 1.6 + (resonance.bowing ? 2.4 : 0);
-      amp += (target - amp) * Math.min(1, dt / 120);
-      phase += dt * 0.006 * (1 + resonance.level * 2);
-      const swing = Math.cos(phase);
-      let d = "";
-      for (let i = 0; i <= POINTS; i++) {
-        const x = i / POINTS;
-        const y = 6 + Math.sin(loops * Math.PI * x) * amp * swing;
-        d += `${i ? "L" : "M"}${(x * 1000).toFixed(1)} ${y.toFixed(2)}`;
-      }
-      path.setAttribute("d", d);
-
-      const now = Math.round(resonance.swara);
-      if (now !== shown && labelRef.current) {
-        shown = now;
-        const s = SWARAS[now];
-        labelRef.current.textContent = `${s.name} · ${s.label}`;
-      }
-    };
-    gsap.ticker.add(draw);
-    return () => gsap.ticker.remove(draw);
-  });
-
-  return (
-    <div className="flex min-w-0 flex-1 items-center gap-4" aria-hidden="true">
-      <svg viewBox="0 0 1000 12" preserveAspectRatio="none" className="h-3 min-w-0 flex-1 overflow-visible text-foreground/30">
-        <path ref={pathRef} d="M0 6L1000 6" fill="none" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-      </svg>
-      <span ref={labelRef} className="label hidden shrink-0 text-muted md:inline">
-        Sa · Spandana
-      </span>
-    </div>
-  );
-}
-
 export default function Header() {
+  const ref = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    let lastY = 0;
+    let travel = 0;
+    const set = (hidden: boolean, solid: boolean) => {
+      const el = ref.current;
+      if (!el) return;
+      el.toggleAttribute("data-hidden", hidden);
+      el.toggleAttribute("data-solid", solid);
+    };
+    let off = () => {};
+    const stop = withLenis((lenis) => {
+      off();
+      off = lenis.on("scroll", () => {
+        const y = lenis.scroll;
+        const dy = y - lastY;
+        lastY = y;
+        // Count travel in one direction, so a twitch of the wheel doesn't flicker it.
+        travel = Math.sign(dy) === Math.sign(travel) ? travel + dy : dy;
+        if (y < 120) set(false, y > 24);
+        else if (travel > 12) set(true, true);
+        else if (travel < -12) set(false, true);
+      });
+    });
+    return () => {
+      stop();
+      off();
+    };
+  }, []);
+
   return (
-    <header className="fixed inset-x-0 top-0 z-40">
-      <div className="mx-auto flex max-w-(--grid-max) items-center gap-5 px-gutter py-5 lg:gap-8 lg:py-7">
-        <a href="#top" onClick={(e) => scrollToId(e, "#top")} className="group flex shrink-0 items-baseline gap-3">
+    <header
+      ref={ref}
+      onFocusCapture={() => ref.current?.removeAttribute("data-hidden")}
+      className="group/header fixed inset-x-0 top-0 z-40 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] data-hidden:-translate-y-full"
+    >
+      {/* The fade behind it when it returns over the copy. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[170%] bg-linear-to-b from-background via-background/85 to-transparent opacity-0 transition-opacity duration-700 group-data-solid/header:opacity-100"
+      />
+      <div className="relative mx-auto flex max-w-(--grid-max) items-center gap-5 px-gutter py-5 lg:gap-8 lg:py-7">
+        <a href="#top" onClick={(e) => scrollToId(e, "#top")} className="flex shrink-0 items-baseline gap-3">
           <span className="font-display text-xl italic leading-none text-accent">S·P</span>
           <span className="label hidden sm:inline">{SITE.name}</span>
         </a>
-        <HeaderString />
+        <span className="flex-1" />
         <SoundToggle className="shrink-0" />
         <a href="#contact" onClick={(e) => scrollToId(e, "#contact")} className="label hidden shrink-0 lg:inline">
           <span className="ulink">Say hello</span>
