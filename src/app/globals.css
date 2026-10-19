@@ -3,6 +3,18 @@
 @import "lenis/dist/lenis.css";
 
 /* Input-aware variants: `fine:` for a mouse or trackpad, `touch:` for fingers (iPad, phones). */
+/*
+ * Amsterdam (Lettersiro), self-hosted from /public/fonts. Its free download is
+ * licensed for personal use only — buy the commercial licence before launch.
+ */
+@font-face {
+  font-family: "Amsterdam Four";
+  src: url("/fonts/Amsterdam.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @custom-variant fine (@media (hover: hover) and (pointer: fine));
 @custom-variant touch (@media not all and (hover: hover) and (pointer: fine));
 
@@ -19,16 +31,18 @@
 :root {
   --palette-background: #100e0c;
   --palette-foreground: #ede6da;
-  --palette-muted: #9a9185;
+  --palette-muted: #aea598;
   --palette-accent: #c8a46e;
 
-  /* Type: Bodoni Moda for headings and the italic display lines, Geist for
-     reading text, Geist Mono for labels and the frequency readouts. */
-  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-bodoni), ui-serif, Georgia, serif;
-  --font-display: var(--font-bodoni), ui-serif, Georgia, serif;
-  --font-label: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  /* Type: Montserrat for structure (headlines in ExtraBold lowercase, text, labels,
+     readouts) and Amsterdam Four, a handwritten script, for the expressive
+     words. The script self-hosts from /public/fonts; Allura stands in until
+     that file is there. */
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Amsterdam Four", var(--font-allura), cursive;
+  --font-label: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
 
   /* Grid: 4 columns on phones, 12 from lg. */
   --grid-columns: 4;
@@ -82,21 +96,86 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Bodoni at display sizes: optical size up, tight leading. */
+/*
+ * Headlines, after the reference deck: Montserrat ExtraBold, lowercase, set
+ * tight and heavy so each word sits as one solid block.
+ */
 .headline {
-  font-weight: 400;
-  font-variation-settings: "opsz" 96;
-  letter-spacing: -0.03em;
-  line-height: 0.86;
+  font-weight: 800;
+  text-transform: lowercase;
+  letter-spacing: -0.055em;
+  line-height: 0.84;
 }
 
+/*
+ * One scale for every section title, and a larger one for the closing
+ * ("let's connect", the 404). Sized so the longest titles ("introduction",
+ * "recognition") still fit a phone, and scaling with the page above 1680px.
+ */
+.title {
+  font-size: min(12vw, 9.5rem);
+}
+.title--closing {
+  font-size: min(17vw, 13.5rem);
+}
+@media (min-width: 1024px) {
+  .title {
+    font-size: min(9vw, 9.5rem);
+  }
+  .title--closing {
+    font-size: min(13vw, 13.5rem);
+  }
+}
+
+/* Calmer line breaks: balanced headings, no lonely last words in prose. */
+h1,
+h2,
+h3,
+blockquote {
+  text-wrap: balance;
+}
+p,
+li,
+dd {
+  text-wrap: pretty;
+}
+
+/*
+ * The signature: Amsterdam Four in brass, tilted, laid across a big word —
+ * her name signed over it. Used sparingly (hero, the closing "let's connect").
+ */
+.signature {
+  font-family: var(--font-display);
+  color: var(--color-accent);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  rotate: -8deg;
+}
+
+/* A script has no italic: never let the browser fake one. */
+.font-display {
+  font-style: normal;
+  font-synthesis: none;
+}
+
+/* Text set in the heading face is bold by default. Utilities can still override. */
+@layer base {
+  .font-heading {
+    font-weight: 700;
+  }
+}
+
+/* Small text, the deck's way: plain sentence case, medium weight, no spacing tricks. */
 .label {
   font-family: var(--font-label);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 400;
-  font-size: 0.75rem;
-  line-height: 1.45;
+  font-weight: 500;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 /*
@@ -104,31 +183,50 @@ body {
  * right around each letter, so copy stays crisp over the busiest pattern.
  * (Not on the accent card, which has its own solid ground.)
  */
-:where(main, [data-gated]) :where(p, li, dd, dt, figcaption, blockquote, h2, h3, a, .label):not([data-surface="accent"] *) {
+:where(main, [data-gated], .preloader) :where(p, li, dd, dt, figcaption, blockquote, h1, h2, h3, a, button, .label):not(
+    [data-surface="accent"] *,
+    [data-no-halo],
+    [data-no-halo] *
+  ) {
+  /* Two light layers: enough to clear the grains, cheap enough to scroll. */
   text-shadow:
     0 0 3px var(--color-background),
-    0 0 14px var(--color-background),
-    0 0 28px var(--color-background);
+    0 0 14px var(--color-background);
 }
 
+/* Sections that drift and dim on scroll get their own GPU layer, so moving
+   them never repaints their text. */
+[data-exit] {
+  will-change: transform, opacity;
+}
+.reading-veil {
+  will-change: opacity;
+}
+
+/*
+ * Links: on hover a brass line sweeps in beneath the words and the text warms
+ * towards brass, while the sand rings around the link and a harmonic sounds
+ * (components/HoverResonance.tsx). On the brass card the line stays in its ink.
+ */
 .ulink {
-  background-image: linear-gradient(currentColor, currentColor);
+  background-image: linear-gradient(90deg, var(--color-accent), var(--color-accent));
   background-size: 0% 1px;
   background-position: 0 100%;
   background-repeat: no-repeat;
-  transition: background-size 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+  transition:
+    background-size 0.7s cubic-bezier(0.65, 0, 0.35, 1),
+    color 0.5s ease;
 }
 a:hover .ulink,
+button:hover .ulink,
 .ulink:hover {
   background-size: 100% 1px;
 }
-
-/* SplitText line masks: extra room so Bodoni descenders and italics aren't clipped. */
-.split-mask {
-  padding-bottom: 0.08em;
-  margin-bottom: -0.08em;
-  padding-inline: 0.06em;
-  margin-inline: -0.06em;
+:where(a, button):hover .ulink:not([data-surface="accent"] *) {
+  color: color-mix(in oklab, var(--color-foreground) 45%, var(--color-accent));
+}
+[data-surface="accent"] .ulink {
+  background-image: linear-gradient(90deg, currentColor, currentColor);
 }
 
 /* Hidden until GSAP reveals them; stays visible if JS or motion is off. */
@@ -165,14 +263,30 @@ html[data-stage="loading"] [data-gated] {
 html:not(.js) .preloader {
   display: none;
 }
-/* Only a thin band under the readout and buttons is shaded; her name in sand stays bright. */
+/* Only a thin band under the bottom row is shaded; her name in sand stays bright. */
 .preloader {
-  background: linear-gradient(to top, color-mix(in oklab, var(--color-background) 80%, transparent) 0%, transparent 28%);
+  background: linear-gradient(to top, color-mix(in oklab, var(--color-background) 75%, transparent) 0%, transparent 14%);
 }
 
-/* ---------- Reading veil (components/ReadingVeil.tsx) ---------- */
+/* ---------- Background fade: every knob in one place ---------- */
 :root {
-  /* How much of the sand the veil hides; the conductor updates it per chapter. */
+  /* The sand itself: grain opacity (0–1). Lower = fainter everywhere. */
+  --sand-strength: 0.55;
+
+  /* Reading veil — a flat layer of the background colour over the sand.
+     --veil-min:     always on, everywhere (0–1). Raise to fade the hero too.
+     --veil-reading: added on top in text-heavy chapters (0–1). */
+  --veil-min: 0.06;
+  --veil-reading: 0.42;
+
+  /* Edge fade — melts the sand into the sides and the top/bottom.
+     Strength is how dark the very edge gets (0%–100%); reach is how far
+     the top/bottom fade runs in from the edge. */
+  --fade-sides: 55%;
+  --fade-ends: 60%;
+  --fade-reach: 14%;
+
+  /* Set live by the conductor from the two veil knobs above; don't edit. */
   --veil: 0.3;
 }
 
@@ -180,6 +294,31 @@ html:not(.js) .preloader {
   background: var(--color-background);
   opacity: var(--veil);
   transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* While the preloader spells her name, nothing dims the sand. */
+.plate-fade {
+  transition: opacity 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+html[data-stage="loading"] .reading-veil,
+html[data-stage="loading"] .plate-fade {
+  opacity: 0;
+}
+
+.plate-fade {
+  background:
+    radial-gradient(
+      ellipse 80% 70% at 50% 48%,
+      transparent 30%,
+      color-mix(in oklab, var(--color-background) var(--fade-sides), transparent) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-background) var(--fade-ends), transparent) 0%,
+      transparent var(--fade-reach),
+      transparent calc(100% - var(--fade-reach)),
+      color-mix(in oklab, var(--color-background) var(--fade-ends), transparent) 100%
+    );
 }
 
 @keyframes sound-bar {

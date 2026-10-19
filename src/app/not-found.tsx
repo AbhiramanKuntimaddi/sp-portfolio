@@ -36,12 +36,12 @@ export default function NotFound() {
 
         <div className="mx-auto w-full max-w-(--grid-max)">
           <p className="label flex items-baseline gap-3 text-muted">
-            <span className="font-display text-xl normal-case italic tracking-normal text-accent">404.00 Hz</span>
+            <span className="text-accent">404.00 Hz</span>
             <span className="h-px w-8 translate-y-[-0.25em] bg-line" aria-hidden="true" />
             <span>Out of tune</span>
           </p>
-          <h1 className="headline mt-8 font-heading text-[22vw] lg:text-[14vw] min-[1680px]:text-[14.6875rem]">
-            Off the <em className="font-display">scale.</em>
+          <h1 className="headline title--closing mt-8 font-heading">
+            Off the <span className="text-accent">scale.</span>
           </h1>
           <div className="mt-12 flex flex-col gap-10 lg:mt-16 lg:flex-row lg:items-end lg:justify-between">
             <p className="max-w-md text-lg leading-relaxed text-muted">
@@ -49,7 +49,7 @@ export default function NotFound() {
               lines here either.
               <span className="mt-4 block text-base">Listen: the scale climbs Sa to Ni, and never quite lands.</span>
             </p>
-            <ReturnToSa className="font-display text-3xl italic text-accent">
+            <ReturnToSa className="text-2xl font-semibold tracking-tight text-accent">
               <span className="ulink">Return to Sa ↗</span>
             </ReturnToSa>
           </div>

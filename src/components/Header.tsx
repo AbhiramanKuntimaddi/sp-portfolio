@@ -6,12 +6,18 @@ import { getLenis, glide, withLenis } from "@/lib/smoothScroll";
 import { onSound, resonance } from "@/lib/resonance";
 import { setSoundOn } from "@/lib/sound";
 
-export function scrollToId(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
-  const lenis = getLenis();
-  if (!lenis) return;
-  e.preventDefault();
-  const target = document.querySelector<HTMLElement>(href);
+/**
+ * Glide to a chapter by its id. Buttons call this instead of "#id" links, so
+ * the address never picks up a hash.
+ */
+export function scrollToSection(id: string) {
+  const target = document.getElementById(id);
   if (!target) return;
+  const lenis = getLenis();
+  if (!lenis) {
+    target.scrollIntoView({ behavior: "smooth" });
+    return;
+  }
   // Longer journeys take a little longer, but never drag.
   const distance = Math.abs(target.getBoundingClientRect().top) / window.innerHeight;
   lenis.scrollTo(target, { duration: Math.min(1.1 + distance * 0.22, 2.6), easing: glide, lock: true });
@@ -103,15 +109,23 @@ export default function Header() {
         className="pointer-events-none absolute inset-x-0 top-0 h-[170%] bg-linear-to-b from-background via-background/85 to-transparent opacity-0 transition-opacity duration-700 group-data-solid/header:opacity-100"
       />
       <div className="relative mx-auto flex max-w-(--grid-max) items-center gap-5 px-gutter py-5 lg:gap-8 lg:py-7">
-        <a href="#top" onClick={(e) => scrollToId(e, "#top")} className="flex shrink-0 items-baseline gap-3">
-          <span className="font-display text-xl italic leading-none text-accent">SP</span>
-          <span className="label hidden sm:inline">{SITE.name}</span>
-        </a>
+        {/* The deck's frame: a small bold name on the left, quiet actions on the right. */}
+        <button
+          type="button"
+          onClick={() => scrollToSection("top")}
+          className="shrink-0 cursor-pointer font-heading text-sm font-bold tracking-tight"
+        >
+          {SITE.name}
+        </button>
         <span className="flex-1" />
         <SoundToggle className="shrink-0" />
-        <a href="#contact" onClick={(e) => scrollToId(e, "#contact")} className="label hidden shrink-0 lg:inline">
-          <span className="ulink">Say hello</span>
-        </a>
+        <button
+          type="button"
+          onClick={() => scrollToSection("contact")}
+          className="label group hidden shrink-0 cursor-pointer lg:inline"
+        >
+          <span className="ulink">Say hello</span> →
+        </button>
       </div>
     </header>
   );

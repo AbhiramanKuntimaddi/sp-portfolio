@@ -8,6 +8,8 @@ import type { NextConfig } from "next";
 const lab = "./.design-lab/lab/index.ts";
 
 const nextConfig: NextConfig = {
+  // Check builds use their own folder (NEXT_DIST_DIR) so they never disturb a running `next dev`.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   turbopack: {
     resolveAlias: {
       "design-lab": existsSync(join(process.cwd(), lab)) ? lab : "./.design-lab/stub.tsx",

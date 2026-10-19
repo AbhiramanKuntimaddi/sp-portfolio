@@ -26,6 +26,10 @@ export const resonance = {
   scatter: 0,
   /** True while the visitor presses and holds to bow the plate. */
   bowing: false,
+  /** The element under the cursor, if it's interactive: the sand rings around it. */
+  hoverEl: null as HTMLElement | null,
+  /** 0–1: how strongly the sand gathers into that ring (eased in and out). */
+  hoverStrength: 0,
   /** The visitor's choice (on by default). */
   soundOn: true,
   /** True once the browser has let audio start (it needs a click, tap or key first). */

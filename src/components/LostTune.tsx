@@ -1,19 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { initSound, resolveHome, setMode } from "@/lib/sound";
+import { initSound, resolveHome, setMode, tryAutoplay } from "@/lib/sound";
 import { resonance } from "@/lib/resonance";
 
 /**
  * The 404's score: switches the strings to the lost scale and starts it on the
- * visitor's first click, tap or key (browsers need one), unless they've
- * turned sound off before.
+ * visitor's first click, tap or key if the browser won't autoplay it.
  */
 export function LostTune() {
   useEffect(() => {
     setMode("lost");
     const stop = initSound({ anyGesture: true });
+    tryAutoplay();
     return () => {
       stop();
       setMode("site");
@@ -24,7 +23,6 @@ export function LostTune() {
 
 /** "Return to Sa": with sound on, the scale finally lands before you go home. */
 export function ReturnToSa({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  const router = useRouter();
   return (
     <a
       href="/"
@@ -33,7 +31,8 @@ export function ReturnToSa({ className = "", children }: { className?: string; c
         if (!resonance.audible || e.metaKey || e.ctrlKey || e.shiftKey) return;
         e.preventDefault();
         await resolveHome();
-        router.push("/");
+        // A full load, so home starts clean: preloader, sand, the lot.
+        window.location.assign("/");
       }}
     >
       {children}

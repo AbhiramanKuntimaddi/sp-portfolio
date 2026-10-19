@@ -45,6 +45,9 @@ uniform vec3 uPointer;
 uniform sampler2D uTargets;
 uniform float uForm;
 uniform float uScatter;
+// Sympathetic resonance: a ring (centre xy, radius z, strength w) that nearby
+// grains gather into around a hovered element.
+uniform vec4 uRing;
 out vec4 outState;
 
 vec2 hash22(vec2 p) {
@@ -87,6 +90,14 @@ void main() {
     v = mix(v, pull, form);
   }
 
+  // Hovering an element: grains near it settle onto a ring around it.
+  if (uRing.w > 0.001) {
+    vec2 dr = p - uRing.xy;
+    float rr = length(dr) + 1e-4;
+    float pull = uRing.w * smoothstep(uRing.z * 2.6, uRing.z * 0.3, rr);
+    v += -(dr / rr) * (rr - uRing.z) * 0.06 * pull + rnd * 0.0008 * pull;
+  }
+
   // Released from the name, each grain first flies to its own home spot
   // spread across the whole plate, so the pattern fills the page again.
   if (uScatter > 0.001) {
@@ -119,6 +130,7 @@ uniform float uSize;
 uniform float uIntensity;
 uniform sampler2D uTargets;
 uniform float uForm;
+uniform vec4 uRing;
 out float vAlpha;
 out float vGlint;
 
@@ -133,6 +145,11 @@ void main() {
   // yet (before the type is measured) stays hidden.
   float letter = texelFetch(uTargets, c, 0).z;
   vAlpha = mix(vAlpha, 0.85 * letter, uForm);
+  // Grains on the hover ring glow a little.
+  if (uRing.w > 0.001) {
+    float off = (length(p - uRing.xy) - uRing.z) / 0.018;
+    vAlpha += uRing.w * 0.9 * exp(-off * off);
+  }
   vGlint = step(0.93, fract(st.z * 7.31));
   gl_Position = vec4(p.x / uAspect, p.y, 0.0, 1.0);
   gl_PointSize = uSize * (0.65 + 0.7 * fract(st.z * 3.7));
@@ -143,6 +160,8 @@ export const DRAW_FS = /* glsl */ `#version 300 es
 precision highp float;
 uniform vec3 uInk;
 uniform vec3 uGlintInk;
+uniform float uStrength;
+uniform float uForm;
 in float vAlpha;
 in float vGlint;
 out vec4 outColor;
@@ -150,7 +169,8 @@ out vec4 outColor;
 void main() {
   float d = length(gl_PointCoord - 0.5);
   if (d > 0.5) discard;
-  float a = smoothstep(0.5, 0.05, d) * vAlpha * 0.55;
+  // While the sand spells her name it draws at full strength, not the quieter reading level.
+  float a = smoothstep(0.5, 0.05, d) * vAlpha * mix(uStrength, 0.95, uForm);
   vec3 col = mix(uInk, uGlintInk, vGlint);
   outColor = vec4(col * a, a);
 }

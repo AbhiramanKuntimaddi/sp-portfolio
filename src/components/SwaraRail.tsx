@@ -5,14 +5,14 @@ import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { SWARAS } from "@/lib/content";
 import { resonance, tuningAt } from "@/lib/resonance";
-import { scrollToId } from "./Header";
+import { scrollToSection } from "./Header";
 
 const WIDTH = 44;
 const MID = WIDTH / 2;
 const VB_H = 1000; // the string's viewBox height; it stretches to whatever height the screen allows
 
 /*
- * The instrument, in the right margin (large screens only, clear of the copy):
+ * The instrument, centred in the right margin (large screens only, clear of the copy):
  *  - top: the current swara, and where it sits in the octave (02/08);
  *  - middle: one string, fixed at both ends. It holds a standing wave with
  *    one loop per step up the scale, is plucked by every new chapter and every
@@ -98,12 +98,12 @@ export default function SwaraRail() {
   return (
     <aside
       aria-label="Chapters"
-      className="fixed right-3 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-center gap-5 lg:flex"
+      className="fixed right-[calc(var(--grid-margin)/2)] top-1/2 z-40 hidden translate-x-1/2 -translate-y-1/2 flex-col items-center gap-7 lg:flex"
       style={{ width: `${WIDTH / 16}rem` }}
     >
       {/* Top: the note, and its place in the octave. */}
-      <p className="flex flex-col items-center gap-1.5 text-center">
-        <span ref={noteRef} className="font-display text-2xl italic leading-none text-accent">
+      <p className="flex flex-col items-center gap-4 pt-2 text-center">
+        <span ref={noteRef} className="font-display text-lg leading-none text-accent">
           Sa
         </span>
         <span ref={chapterRef} className="label tabular-nums text-muted">
@@ -140,17 +140,17 @@ export default function SwaraRail() {
           <ol className="flex h-full flex-col justify-between">
             {SWARAS.map((s) => (
               <li key={s.id} className="group/fret relative h-0">
-                <a
-                  href={`#${s.id}`}
-                  onClick={(e) => scrollToId(e, `#${s.id}`)}
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(s.id)}
                   aria-label={`${s.name} — ${s.label}`}
-                  className="absolute inset-x-0 -top-3 block h-6"
+                  className="absolute inset-x-0 -top-3 block h-6 w-full cursor-pointer"
                 >
                   <span className="pointer-events-none absolute right-full top-1/2 mr-1 flex -translate-y-1/2 items-baseline gap-2 whitespace-nowrap bg-background px-2 py-1 opacity-0 transition-opacity duration-300 group-hover/fret:opacity-100">
-                    <span className="font-display text-base italic leading-none text-accent">{s.name}</span>
+                    <span className="font-display text-base leading-none text-accent">{s.name}</span>
                     <span className="label">{s.label}</span>
                   </span>
-                </a>
+                </button>
               </li>
             ))}
           </ol>

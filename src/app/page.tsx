@@ -1,6 +1,7 @@
 import Cymatics from "@/components/cymatics/Cymatics";
 import Conductor from "@/components/Conductor";
 import Header from "@/components/Header";
+import HoverResonance from "@/components/HoverResonance";
 import ReadingVeil from "@/components/ReadingVeil";
 import Preloader from "@/components/Preloader";
 import SwaraRail from "@/components/SwaraRail";
@@ -24,6 +25,7 @@ export default function Home() {
         <SwaraRail />
       </div>
       <Conductor />
+      <HoverResonance />
       <main className="relative" data-gated>
         <Hero />
         <Profile />

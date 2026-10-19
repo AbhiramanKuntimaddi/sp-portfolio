@@ -36,14 +36,14 @@ export const SA_HZ = 220;
 const et = (step: number) => Math.pow(2, step / 12);
 
 export const SWARAS: Swara[] = [
-  { id: "top", name: "Sa", short: "S", label: "Spandana", step: 0, ratio: et(0), mode: [3, 5, -1], intensity: 1 },
-  { id: "profile", name: "Re", short: "R", label: "Profile", step: 2, ratio: et(2), mode: [2, 7, 1], intensity: 0.32 },
-  { id: "journey", name: "Ga", short: "G", label: "Journey", step: 4, ratio: et(4), mode: [4, 5, -1], intensity: 0.3 },
-  { id: "honours", name: "Ma", short: "M", label: "Honours", step: 5, ratio: et(5), mode: [3, 8, 1], intensity: 0.3 },
-  { id: "giving", name: "Pa", short: "P", label: "Giving back", step: 7, ratio: et(7), mode: [5, 7, -1], intensity: 0.36 },
-  { id: "music", name: "Dha", short: "D", label: "Music", step: 9, ratio: et(9), mode: [6, 7, 1], intensity: 1 },
-  { id: "next", name: "Ni", short: "N", label: "What’s next", step: 11, ratio: et(11), mode: [4, 9, -1], intensity: 0.4 },
-  { id: "contact", name: "Ṡa", short: "Ṡ", label: "Connect", step: 12, ratio: et(12), mode: [3, 5, 1], intensity: 0.9 },
+  { id: "top", name: "Sa", short: "S", label: "Spandana", step: 0, ratio: et(0), mode: [3, 5, -1], intensity: 0.95 },
+  { id: "profile", name: "Re", short: "R", label: "Profile", step: 2, ratio: et(2), mode: [2, 7, 1], intensity: 0.38 },
+  { id: "journey", name: "Ga", short: "G", label: "Journey", step: 4, ratio: et(4), mode: [4, 5, -1], intensity: 0.35 },
+  { id: "honours", name: "Ma", short: "M", label: "Honours", step: 5, ratio: et(5), mode: [3, 8, 1], intensity: 0.35 },
+  { id: "giving", name: "Pa", short: "P", label: "Giving back", step: 7, ratio: et(7), mode: [5, 7, -1], intensity: 0.4 },
+  { id: "music", name: "Dha", short: "D", label: "Music", step: 9, ratio: et(9), mode: [6, 7, 1], intensity: 0.95 },
+  { id: "next", name: "Ni", short: "N", label: "What’s next", step: 11, ratio: et(11), mode: [4, 9, -1], intensity: 0.42 },
+  { id: "contact", name: "Ṡa", short: "Ṡ", label: "Connect", step: 12, ratio: et(12), mode: [3, 5, 1], intensity: 0.75 },
 ];
 
 export const hero = {
@@ -56,9 +56,10 @@ export const hero = {
     "Driven by a lifelong passion for crafting beautiful, soul-stirring spaces — and for the music that has shaped her just as deeply.",
 };
 
+// Copy between *asterisks* renders as the brass emphasis (components/Emphasis.tsx).
 export const profile = {
   heading: ["Personal", "Profile"],
-  lead: "Spandana designs for the way a space feels — intuitive, human-centred rooms where every new idea has to earn its place in everyday life.",
+  lead: "Spandana designs for *the way a space feels* — intuitive, human-centred rooms where every new idea has to earn its place in everyday life.",
   body: [
     "She trained in interior design at JNAFAU, learnt furniture and prototyping under Prof. Supradip Das at IIT Guwahati, and found her footing in workspace design at Liquid Space Studio. Then she started her own practice — one of the youngest entrepreneurs in her field.",
     "The other half of her is music: a trained Carnatic vocalist and playback singer who teaches students across the world. And she keeps returning to JNAFAU, as a guest lecturer, for the designers coming up behind her.",
@@ -149,7 +150,7 @@ export const givingBack = [
 export const music = {
   eyebrow: "Beyond spatial design",
   heading: ["The other", "half is", "music."],
-  body: "Music is as much a part of Spandana as design. A trained and certified Carnatic vocalist, she has sung playback for Telugu cinema — and now passes the form on to a global class of young students.",
+  body: "Music is as much a part of Spandana as design. *A trained and certified Carnatic vocalist*, she has sung playback for Telugu cinema — and now passes the form on to a global class of young students.",
   facts: [
     { value: "Carnatic", label: "Trained & certified vocalist" },
     { value: "TFI", label: "Playback songs in Telugu cinema" },
@@ -164,5 +165,5 @@ export const next = {
   url: "https://jaipuritrunk.com",
   urlLabel: "jaipuritrunk.com",
   launch: "Launching early December 2026",
-  body: "Her newest venture brings the same eye for craft, colour and material to what we wear: Jaipuri Trunk, a label for Jaipuri juttis and artisanal accessories.",
+  body: "Her newest venture brings the same eye for craft, colour and material to what we wear: *Jaipuri Trunk*, a label for Jaipuri juttis and artisanal accessories.",
 };

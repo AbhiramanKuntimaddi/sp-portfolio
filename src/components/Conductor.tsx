@@ -35,7 +35,59 @@ const QUIET_TO = { autoAlpha: 1, y: 0, duration: 1, ease: "power3.out" };
  * `data-cue`, placed on a timeline at their `data-delay`. Played when the
  * chapter's note sounds, so the music and the words arrive together.
  */
-function buildCue(section: HTMLElement) {
+/**
+ * Pluck a title like a string. The pieces (letters or lines) appear in place,
+ * then vibrate as a standing wave across the word that rings down to rest —
+ * no masks, no sliding, no zoom. `loops` is the wave's shape: the chapter's
+ * place in the octave (Sa = 1 bow, Re = 2 loops, Ga = 3…), so every
+ * chapter's title rings a little differently.
+ */
+function pluckTitle(
+  tl: gsap.core.Timeline,
+  el: HTMLElement,
+  parts: Element[],
+  at: number,
+  loops: number,
+  onDone: () => void,
+) {
+  const n = parts.length;
+  const fontSize = parseFloat(getComputedStyle(el).fontSize) || 48;
+  // Letters swing further than whole lines.
+  const amp = fontSize * (n > 6 ? 0.07 : 0.035);
+  const RING = 1.5; // seconds to ring down
+  const HZ = 5.5; // visible vibrations per second
+  const spread = Math.min(0.35, n * 0.03);
+
+  tl.set(el, { autoAlpha: 1 }, at);
+  tl.fromTo(parts, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3, ease: "power1.out", stagger: { amount: spread } }, at);
+
+  const state = { t: 0 };
+  const setY = parts.map((p) => gsap.quickSetter(p, "y", "px"));
+  tl.to(
+    state,
+    {
+      t: RING,
+      duration: RING,
+      ease: "none",
+      onUpdate: () => {
+        const t = state.t;
+        const decay = Math.exp(-t * 3.2);
+        parts.forEach((_, i) => {
+          const x = (i + 0.5) / n;
+          const shape = Math.sin(loops * Math.PI * x);
+          setY[i](amp * shape * decay * Math.sin(2 * Math.PI * HZ * t));
+        });
+      },
+      onComplete: () => {
+        gsap.set(parts, { clearProps: "transform" });
+        onDone();
+      },
+    },
+    at,
+  );
+}
+
+function buildCue(section: HTMLElement, loops = 1) {
   const tl = gsap.timeline({ paused: true });
   section.querySelectorAll<HTMLElement>("[data-cue]").forEach((el) => {
     const at = parseFloat(el.dataset.delay ?? "0");
@@ -43,29 +95,49 @@ function buildCue(section: HTMLElement) {
 
     // The hero's name condenses out of the sand that spelled it: no masks, the
     // letters sharpen from a blur in random order, exactly where the grains were.
+    // A script word condenses as one piece (splitting it would break its joins).
+    if (el.dataset.emerge === "whole") {
+      tl.fromTo(
+        el,
+        { autoAlpha: 0, filter: "blur(16px)" },
+        { autoAlpha: 1, filter: "blur(0px)", duration: 1.6, ease: "power3.out" },
+        at,
+      );
+      return;
+    }
+
+    // A script word is written in: revealed left to right, like a pen stroke.
+    // The insets reach past the box so swashes and descenders aren't cut.
+    if (kind === "write") {
+      tl.set(el, { autoAlpha: 1 }, at);
+      tl.fromTo(
+        el,
+        { clipPath: "inset(-40% 100% -40% -10%)" },
+        { clipPath: "inset(-40% -10% -40% -10%)", duration: 1.5, ease: "power2.inOut" },
+        at,
+      );
+      return;
+    }
+
     if (el.dataset.emerge !== undefined) {
       const split = SplitText.create(el, { type: "chars" });
       tl.set(el, { autoAlpha: 1 }, at);
       tl.fromTo(
         split.chars,
-        { autoAlpha: 0, filter: "blur(14px)", scale: 1.06 },
-        { autoAlpha: 1, filter: "blur(0px)", scale: 1, duration: 1.3, ease: "power3.out", stagger: { amount: 0.55, from: "random" } },
+        { autoAlpha: 0, filter: "blur(14px)" },
+        { autoAlpha: 1, filter: "blur(0px)", duration: 1.3, ease: "power3.out", stagger: { amount: 0.55, from: "random" } },
         at,
       );
       tl.call(() => split.revert(), [], at + 1.9);
       return;
     }
 
+    // Titles are plucked like a string (see pluckTitle); afterwards the text
+    // is handed back to the browser so it reflows on resize.
     if (el.dataset.split) {
       const byChar = el.dataset.split === "chars";
-      const split = SplitText.create(el, { type: byChar ? "lines,chars" : "lines", mask: "lines", linesClass: "split" });
-      const parts = byChar ? split.chars : split.lines;
-      const spread = byChar ? Math.min(0.5, parts.length * 0.045) : (parts.length - 1) * 0.1;
-      const duration = byChar ? 1.4 : 1.2;
-      tl.set(el, { autoAlpha: 1 }, at);
-      tl.from(parts, { yPercent: 108, duration, ease: "expo.out", stagger: { amount: spread, ease: "power1.in" } }, at);
-      // Hand the text back to the browser so it reflows on resize.
-      tl.call(() => split.revert(), [], at + duration + spread + 0.45);
+      const split = SplitText.create(el, { type: byChar ? "words,chars" : "lines" });
+      pluckTitle(tl, el, byChar ? split.chars : split.lines, at, loops, () => split.revert());
       return;
     }
 
@@ -116,6 +188,15 @@ export default function Conductor() {
 
     let chapter = 0;
     let lastVeil = -1;
+    // The veil's two knobs live in globals.css (--veil-min, --veil-reading).
+    let veilMin = 0.06;
+    let veilReading = 0.42;
+    const readVeilKnobs = () => {
+      const cs = getComputedStyle(document.documentElement);
+      veilMin = parseFloat(cs.getPropertyValue("--veil-min")) || 0;
+      veilReading = parseFloat(cs.getPropertyValue("--veil-reading")) || 0;
+    };
+    readVeilKnobs();
     const conduct = (scroll: number, velocity: number) => {
       const vh = window.innerHeight;
       let pos = 0;
@@ -125,9 +206,9 @@ export default function Conductor() {
       resonance.swara = pos;
       resonance.morph = Math.sin((pos % 1) * Math.PI);
       resonance.velocity = velocity;
-      // The reading veil: nearly clear where the sand is the point (Sa, Dha),
-      // about half where there's copy to read.
-      const veil = 0.06 + (1 - tuningAt(pos).intensity) * 0.62;
+      // The reading veil: light where the sand is the point (Sa, Dha), about
+      // two thirds where there's copy to read.
+      const veil = Math.min(1, veilMin + (1 - tuningAt(pos).intensity) * veilReading);
       if (Math.abs(veil - lastVeil) > 0.004) {
         lastVeil = veil;
         document.documentElement.style.setProperty("--veil", veil.toFixed(3));
@@ -151,6 +232,8 @@ export default function Conductor() {
       detach();
       const onScroll = () => conduct(lenis.scroll, lenis.velocity);
       const onRefresh = () => {
+        readVeilKnobs();
+        lastVeil = -1;
         measure(lenis.scroll);
         onScroll();
       };
@@ -191,7 +274,8 @@ export default function Conductor() {
           SWARAS.forEach((s, i) => {
             const section = document.getElementById(s.id);
             if (!section) return;
-            cues.set(i, buildCue(section));
+            // The title's standing wave follows the chapter's note (Sa = 1 loop…).
+            cues.set(i, buildCue(section, Math.min(i + 1, 4)));
             // A safety net if a note is skipped (a resize, a jump): play once
             // the chapter is well into view anyway.
             ScrollTrigger.create({ trigger: section, start: "top 40%", once: true, onEnter: () => playCue(i) });
@@ -199,45 +283,90 @@ export default function Conductor() {
           // The hero plays as the plate is struck; anything already passed plays too.
           for (let i = 0; i <= chapter; i++) playCue(i);
 
-          // Secondary lines (quotes) still split as they scroll in.
+          // Secondary titles (the quote) are plucked too, as they scroll in.
           gsap.utils.toArray<HTMLElement>("[data-split]:not([data-cue])").forEach((el) => {
-            gsap.set(el, { autoAlpha: 1 });
-            SplitText.create(el, {
-              type: "lines",
-              mask: "lines",
-              linesClass: "split",
-              autoSplit: true,
-              onSplit: (self) =>
-                gsap.from(self.lines, {
-                  yPercent: 105,
-                  duration: 1.15,
-                  ease: EASE,
-                  stagger: 0.11,
-                  scrollTrigger: { trigger: el, start: "top 86%", once: true },
-                }),
-            });
+            const split = SplitText.create(el, { type: "lines" });
+            const tl = gsap.timeline({ paused: true });
+            pluckTitle(tl, el, split.lines, 0, 1, () => split.revert());
+            ScrollTrigger.create({ trigger: el, start: "top 86%", once: true, onEnter: () => tl.play() });
           });
 
-          // Photos open like a shutter, the picture settling as it does.
+          // Photos open like a shutter — nothing else: no zoom, no drift.
           gsap.utils.toArray<HTMLElement>('[data-reveal="image"]').forEach((el) => {
-            const img = el.querySelector("img");
             gsap.set(el, { autoAlpha: 1 });
             const tl = gsap.timeline({
               delay: parseFloat(el.dataset.delay ?? "0"),
               scrollTrigger: { trigger: el, start: "top 85%", once: true },
             });
             tl.fromTo(el, { clipPath: "inset(100% 0% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 1.5, ease: "expo.inOut" });
-            if (img) tl.fromTo(img, { scale: 1.25 }, { scale: 1, duration: 2, ease: "expo.out" }, 0.1);
           });
 
-          // Rows and copy enter in reading order, whatever arrives together,
-          // each row's hairline drawing in first.
-          const rest = "[data-reveal]:not([data-cue]):not([data-reveal='image'])";
+          // Long paragraphs fade in line by line — no masks (they clipped the
+          // reading halo), no sliding; the split is undone afterwards.
+          gsap.utils.toArray<HTMLElement>("p[data-reveal]:not([data-delay]):not([data-cue])").forEach((el) => {
+            if ((el.textContent ?? "").trim().length < 90) return;
+            el.dataset.prose = "";
+            gsap.set(el, { autoAlpha: 1 });
+            SplitText.create(el, {
+              type: "lines",
+              autoSplit: true,
+              onSplit: (self) =>
+                gsap.from(self.lines, {
+                  autoAlpha: 0,
+                  duration: 0.9,
+                  ease: "power2.out",
+                  stagger: 0.12,
+                  scrollTrigger: { trigger: el, start: "top 88%", once: true },
+                  onComplete: () => self.revert(),
+                }),
+            });
+          });
+
+          // Everything else enters in reading order, whatever arrives together.
+          // List rows also wipe in from the left as they rise.
+          const rest = "[data-reveal]:not([data-cue]):not([data-reveal='image']):not([data-prose])";
           gsap.set(rest, SOFT);
           ScrollTrigger.batch(rest, {
             start: "top 88%",
             once: true,
-            onEnter: (batch) => gsap.to(batch, { ...SHARP, stagger: 0.12, overwrite: true }),
+            onEnter: (batch) => {
+              gsap.to(batch, { ...SHARP, stagger: 0.12, overwrite: true });
+              const rows = batch.filter((el) => el.tagName === "LI" || el.tagName === "ARTICLE");
+              if (rows.length) {
+                gsap.fromTo(
+                  rows,
+                  { clipPath: "inset(-20% 100% -20% 0%)" },
+                  {
+                    clipPath: "inset(-20% 0% -20% 0%)",
+                    duration: 1.3,
+                    ease: "expo.inOut",
+                    stagger: 0.12,
+                    clearProps: "clipPath",
+                  },
+                );
+              }
+            },
+          });
+
+          // Exits: as a chapter's end leaves the screen, it recedes — drifting up
+          // and dimming — while the next one arrives. Scrubbed to the
+          // scroll, so it plays backwards when you return. (No blur: blurring
+          // large areas makes scrolling stutter.)
+          gsap.utils.toArray<HTMLElement>("[data-exit]").forEach((el) => {
+            const hero = el.dataset.exit === "hero";
+            gsap.fromTo(
+              el,
+              { y: 0, opacity: 1 },
+              {
+                y: () => -window.innerHeight * (hero ? 0.16 : 0.07),
+                opacity: hero ? 0.15 : 0.2,
+                ease: "none",
+                scrollTrigger: hero
+                  ? // The name lifts away at its own pace as soon as you scroll.
+                    { trigger: el.closest("section") ?? el, start: "top top", end: "bottom top", scrub: 0.6, invalidateOnRefresh: true }
+                  : { trigger: el, start: "bottom 45%", end: "bottom top", scrub: 0.6, invalidateOnRefresh: true },
+              },
+            );
           });
         }),
       );

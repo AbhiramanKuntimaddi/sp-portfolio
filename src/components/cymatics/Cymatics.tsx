@@ -69,22 +69,44 @@ function sampleElements(selector: string, aspect: number, count: number) {
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   els.forEach((el) => {
-    const text = (el.textContent ?? "").trim();
     const r = el.getBoundingClientRect();
-    if (!text || !r.width) return;
     const cs = getComputedStyle(el);
+    // Spell what the page shows: CSS capitals included.
+    const raw = (el.textContent ?? "").trim();
+    const text =
+      cs.textTransform === "uppercase" ? raw.toUpperCase() : cs.textTransform === "lowercase" ? raw.toLowerCase() : raw;
+    if (!text || !r.width) return;
     const size = parseFloat(cs.fontSize) * k;
     ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${size}px ${cs.fontFamily}`;
     if ("letterSpacing" in ctx) {
       (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = `${parseFloat(cs.letterSpacing || "0") * k}px`;
     }
+    // Work from the element's own (untransformed) box, turned about its centre
+    // by any CSS `rotate` — so a tilted signature is traced tilted.
+    const w = el.offsetWidth * k;
+    const h = el.offsetHeight * k;
+    const turn = cs.rotate && cs.rotate !== "none" ? (parseFloat(cs.rotate) * Math.PI) / 180 : 0;
     // CSS centres the font's content box in the line box; find the baseline the same way.
     const m = ctx.measureText(text);
     const ascent = m.fontBoundingBoxAscent || size * 0.9;
     const descent = m.fontBoundingBoxDescent || size * 0.25;
-    const lineBox = r.height * k;
-    const baseline = r.top * k + (lineBox - (ascent + descent)) / 2 + ascent;
-    ctx.fillText(text, r.left * k, baseline);
+    const baseline = -h / 2 + (h - (ascent + descent)) / 2 + ascent;
+    ctx.save();
+    ctx.translate((r.left + r.width / 2) * k, (r.top + r.height / 2) * k);
+    ctx.rotate(turn);
+    // Honour the element's text alignment inside its box.
+    const align = cs.textAlign;
+    if (align === "center") {
+      ctx.textAlign = "center";
+      ctx.fillText(text, 0, baseline);
+    } else if (align === "right" || align === "end") {
+      ctx.textAlign = "right";
+      ctx.fillText(text, w / 2, baseline);
+    } else {
+      ctx.textAlign = "left";
+      ctx.fillText(text, -w / 2, baseline);
+    }
+    ctx.restore();
   });
 
   const img = ctx.getImageData(0, 0, cw, ch).data;
@@ -141,8 +163,8 @@ export default function Cymatics({
       canvas.style.display = "none";
       return;
     }
-    const uSim = uniforms(gl, sim, ["uState", "uTime", "uDt", "uAspect", "uScale", "uEnergy", "uSettle", "uPointer", "uN", "uM", "uS", "uTargets", "uForm", "uScatter"]);
-    const uDraw = uniforms(gl, draw, ["uState", "uWidth", "uAspect", "uScale", "uSize", "uIntensity", "uInk", "uGlintInk", "uN", "uM", "uS", "uTargets", "uForm"]);
+    const uSim = uniforms(gl, sim, ["uState", "uTime", "uDt", "uAspect", "uScale", "uEnergy", "uSettle", "uPointer", "uN", "uM", "uS", "uTargets", "uForm", "uScatter", "uRing"]);
+    const uDraw = uniforms(gl, draw, ["uState", "uWidth", "uAspect", "uScale", "uSize", "uIntensity", "uInk", "uGlintInk", "uStrength", "uN", "uM", "uS", "uTargets", "uForm", "uRing"]);
 
     // One big triangle covers the sim target.
     const quad = gl.createBuffer();
@@ -228,6 +250,9 @@ export default function Cymatics({
     let ink: [number, number, number] = [0.93, 0.9, 0.85];
     let glint: [number, number, number] = [0.78, 0.64, 0.43];
     let intensity = 0;
+    // The hover ring, in plate space; kept where it was while it fades out.
+    const ring = { x: 0, y: 0, r: 0.1 };
+    let strength = 0.55;
     let energy = 1.5;
     let frame = 0;
     let last = performance.now();
@@ -243,9 +268,21 @@ export default function Cymatics({
       if (frame % 45 === 1) {
         ink = readColour("--palette-foreground", ink);
         glint = readColour("--palette-accent", glint);
+        // Grain opacity: the --sand-strength knob in globals.css.
+        strength = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sand-strength")) || 0.55;
       }
 
       const tune = tuning ?? tuningAt(resonance.swara);
+      const hovered = resonance.hoverEl;
+      if (hovered) {
+        const r = hovered.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        ring.x = (((r.left + r.width / 2) / vw) * 2 - 1) * aspect;
+        ring.y = -(((r.top + r.height / 2) / vh) * 2 - 1);
+        // Just outside the element, in plate units (the plate is 2 units tall).
+        ring.r = Math.min(0.32, (Math.max(r.width, r.height) / 2 / vh) * 2 * 1.15 + 0.035);
+      }
       resonance.level = soundLevel();
       resonance.pulse *= Math.pow(0.9, dt);
       resonance.pointer.force *= Math.pow(0.93, dt);
@@ -283,6 +320,7 @@ export default function Cymatics({
       gl.uniform1i(uSim.uTargets, 1);
       gl.uniform1f(uSim.uForm, spellFrom ? resonance.form : 0);
       gl.uniform1f(uSim.uScatter, resonance.scatter);
+      gl.uniform4f(uSim.uRing, ring.x, ring.y, ring.r, resonance.hoverStrength);
       gl.activeTexture(gl.TEXTURE0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       read = 1 - read;
@@ -306,6 +344,7 @@ export default function Cymatics({
       gl.uniform1f(uDraw.uIntensity, intensity);
       gl.uniform3f(uDraw.uInk, ink[0], ink[1], ink[2]);
       gl.uniform3f(uDraw.uGlintInk, glint[0], glint[1], glint[2]);
+      gl.uniform1f(uDraw.uStrength, strength);
       gl.uniform1f(uDraw.uN, tune.n);
       gl.uniform1f(uDraw.uM, tune.m);
       gl.uniform1f(uDraw.uS, tune.sign);
@@ -313,6 +352,7 @@ export default function Cymatics({
       gl.bindTexture(gl.TEXTURE_2D, nameTex);
       gl.uniform1i(uDraw.uTargets, 1);
       gl.uniform1f(uDraw.uForm, spellFrom ? resonance.form : 0);
+      gl.uniform4f(uDraw.uRing, ring.x, ring.y, ring.r, resonance.hoverStrength);
       gl.activeTexture(gl.TEXTURE0);
       gl.drawArrays(gl.POINTS, 0, count);
     };

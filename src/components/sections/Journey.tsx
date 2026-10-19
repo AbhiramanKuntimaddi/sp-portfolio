@@ -6,12 +6,12 @@ import SwaraMark from "./SwaraMark";
 export default function Journey() {
   return (
     <section id="journey" className="relative z-10 py-32 lg:py-48">
-      <div className="mx-auto max-w-(--grid-max) px-gutter">
+      <div data-exit className="mx-auto max-w-(--grid-max) px-gutter">
         <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-7">
             <SwaraMark index={2} />
-            <h2 className="headline mt-10 font-heading text-[17vw] lg:text-[9.5vw] min-[1680px]:text-[10rem]" data-split="chars" data-cue data-delay="0.15">
-              The <em className="font-display">journey</em>
+            <h2 className="headline title mt-10 font-heading" data-split="chars" data-cue data-delay="0.15">
+              The journey
             </h2>
           </div>
           <div className="hidden items-end gap-4 lg:col-span-4 lg:col-start-9 lg:flex">
@@ -32,12 +32,12 @@ export default function Journey() {
               data-reveal
             >
               <span className="label text-accent lg:col-span-2">{j.when}</span>
-              <h3 className="font-heading text-3xl leading-tight transition-transform duration-700 ease-out group-hover:translate-x-3 sm:text-4xl lg:col-span-5 lg:text-[2.75rem]">
+              <h3 className="font-heading text-2xl leading-tight tracking-tight transition-transform duration-700 ease-out group-hover:translate-x-3 sm:text-3xl lg:col-span-5 lg:text-[2.1rem]">
                 {j.title}
               </h3>
               <div className="lg:col-span-5">
                 <p className="label text-foreground">{j.sub}</p>
-                <p className="mt-3 max-w-md leading-relaxed text-muted">{j.body}</p>
+                <p className="mt-3 max-w-md text-[0.95rem] leading-[1.8] text-muted">{j.body}</p>
               </div>
             </li>
           ))}
