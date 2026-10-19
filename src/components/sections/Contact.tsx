@@ -1,10 +1,11 @@
 import { SITE } from "@/lib/content";
 import SwaraMark from "./SwaraMark";
 
-/* Ṡa — the octave resolves. Same pattern as the opening Sa, mirrored. */
+/* Ṡa — the octave resolves. Same pattern as the opening Sa, mirrored.
+   The site footer follows separately (components/Footer.tsx). */
 export default function Contact() {
   return (
-    <section id="contact" className="relative z-10 flex min-h-dvh flex-col justify-between pb-24 pt-32 lg:pb-8 lg:pt-48">
+    <section id="contact" className="relative z-10 flex min-h-[90dvh] flex-col justify-center py-32 lg:py-48">
       <div className="mx-auto w-full max-w-(--grid-max) px-gutter">
         <SwaraMark index={7} />
         <h2 className="headline title--closing mt-10 font-heading">
@@ -27,15 +28,6 @@ export default function Contact() {
           </div>
         </div>
       </div>
-
-      <footer className="mx-auto mt-24 flex w-full max-w-(--grid-max) flex-col gap-3 px-gutter sm:flex-row sm:justify-between">
-        <span className="label text-muted">
-          © {new Date().getFullYear()} {SITE.name} · {SITE.city}
-        </span>
-        <a href={SITE.credit.url} target="_blank" rel="noreferrer" className="label text-muted">
-          Website brought to life by <span className="ulink text-foreground">{SITE.credit.name}</span>
-        </a>
-      </footer>
     </section>
   );
 }

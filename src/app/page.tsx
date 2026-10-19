@@ -1,5 +1,6 @@
 import Cymatics from "@/components/cymatics/Cymatics";
 import Conductor from "@/components/Conductor";
+import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import HoverResonance from "@/components/HoverResonance";
 import ReadingVeil from "@/components/ReadingVeil";
@@ -36,6 +37,7 @@ export default function Home() {
         <WhatsNext />
         <Contact />
       </main>
+      <Footer />
     </>
   );
 }
