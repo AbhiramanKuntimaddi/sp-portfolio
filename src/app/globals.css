@@ -1,0 +1,190 @@
+@import "tailwindcss";
+@import "./tokens.css";
+@import "lenis/dist/lenis.css";
+
+/* Input-aware variants: `fine:` for a mouse or trackpad, `touch:` for fingers (iPad, phones). */
+@custom-variant fine (@media (hover: hover) and (pointer: fine));
+@custom-variant touch (@media not all and (hover: hover) and (pointer: fine));
+
+/*
+ * Colours, fonts and grid follow the shared Design Lab vocabulary (../DesignLab,
+ * RULES.md): components use the roles (bg-background, text-foreground,
+ * text-muted, text-accent, bg-surface, border-line; font-heading, font-display,
+ * font-body, label), never raw values.
+ *
+ * "Spandana — Cymatics": a dark brass plate with ivory sand. The sand canvas
+ * reads --palette-foreground and --palette-accent, so a Lab palette preview
+ * recolours the particles too.
+ */
+:root {
+  --palette-background: #100e0c;
+  --palette-foreground: #ede6da;
+  --palette-muted: #9a9185;
+  --palette-accent: #c8a46e;
+
+  /* Type: Bodoni Moda for headings and the italic display lines, Geist for
+     reading text, Geist Mono for labels and the frequency readouts. */
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-bodoni), ui-serif, Georgia, serif;
+  --font-display: var(--font-bodoni), ui-serif, Georgia, serif;
+  --font-label: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  /* Grid: 4 columns on phones, 12 from lg. */
+  --grid-columns: 4;
+  --grid-gutter: 1.25rem;
+  --grid-margin: 1.25rem;
+  --grid-max: 1680px;
+  --grid-baseline: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --grid-margin: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --grid-columns: 12;
+    --grid-gutter: 2rem;
+    --grid-margin: 4.5rem;
+  }
+}
+
+@theme inline {
+  --spacing-gutter: var(--grid-margin);
+}
+
+html {
+  background-color: var(--color-background);
+}
+
+body {
+  overflow-x: clip;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Bodoni at display sizes: optical size up, tight leading. */
+.headline {
+  font-weight: 400;
+  font-variation-settings: "opsz" 96;
+  letter-spacing: -0.03em;
+  line-height: 0.86;
+}
+
+.label {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 400;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+/*
+ * Reading over sand: a soft halo in the background colour clears the grains
+ * right around each letter, so copy stays crisp over the busiest pattern.
+ * (Not on the accent card, which has its own solid ground.)
+ */
+:where(main, [data-gated]) :where(p, li, dd, dt, figcaption, blockquote, h2, h3, a, .label):not([data-surface="accent"] *) {
+  text-shadow:
+    0 0 3px var(--color-background),
+    0 0 14px var(--color-background),
+    0 0 28px var(--color-background);
+}
+
+.ulink {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+}
+a:hover .ulink,
+.ulink:hover {
+  background-size: 100% 1px;
+}
+
+/* SplitText line masks: extra room so Bodoni descenders and italics aren't clipped. */
+.split-mask {
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+  padding-inline: 0.06em;
+  margin-inline: -0.06em;
+}
+
+/* Hidden until GSAP reveals them; stays visible if JS or motion is off. */
+.js [data-reveal],
+.js [data-split],
+.js [data-cue] {
+  visibility: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal],
+  .js [data-split],
+  .js [data-cue] {
+    visibility: visible;
+  }
+}
+
+/* Stages: while the preloader tunes the plate, the page waits (see lib/stage.ts). */
+[data-gated] {
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.6s;
+}
+/* The header and the scale rail arrive after the name has risen. */
+html[data-stage="entered"] [data-gated="chrome"] {
+  transition:
+    opacity 1.4s cubic-bezier(0.22, 1, 0.36, 1) 1.5s,
+    visibility 0s 1.5s;
+}
+html[data-stage="loading"] [data-gated] {
+  opacity: 0;
+  visibility: hidden;
+}
+/* The preloader only exists with JS; without it the page simply shows. */
+html:not(.js) .preloader {
+  display: none;
+}
+/* Only a thin band under the readout and buttons is shaded; her name in sand stays bright. */
+.preloader {
+  background: linear-gradient(to top, color-mix(in oklab, var(--color-background) 80%, transparent) 0%, transparent 28%);
+}
+
+/* ---------- Reading veil (components/ReadingVeil.tsx) ---------- */
+:root {
+  /* How much of the sand the veil hides; the conductor updates it per chapter. */
+  --veil: 0.3;
+}
+
+.reading-veil {
+  background: var(--color-background);
+  opacity: var(--veil);
+  transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes sound-bar {
+  from {
+    transform: scaleY(0.2);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-background);
+}
+
+:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 4px;
+}

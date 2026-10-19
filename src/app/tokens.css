@@ -1,0 +1,89 @@
+/* design-lab tokens v2.1.0 · synced from ../DesignLab, don't edit in a project (see RULES.md) */
+
+/*
+ * The palette: four source colours a project sets in its own :root (and the
+ * Lab overrides while previewing). Components never use these directly; they
+ * use the --color-* roles below, which depend on the surface they sit on.
+ */
+@layer theme {
+  :root {
+    --palette-background: #0a0b0f;
+    --palette-foreground: #e7e8ea;
+    --palette-muted: #868b96;
+    --palette-accent: #3b82f6;
+
+    /* Layout grid, drawn by the Lab's grid overlay. Projects set their own. */
+    --grid-columns: 12;
+    --grid-gutter: 1.5rem;
+    --grid-margin: 1rem;
+    --grid-max: none;
+    --grid-baseline: 0.5rem;
+  }
+}
+
+/*
+ * Roles. Colours come from the base surface by default; the font roles fall
+ * back along a chain so a project that only sets --font-sans still works.
+ * Any role on any surface can be hand-tuned with --tune-{surface}-{role}.
+ */
+@theme {
+  --color-background: var(--tune-base-background, var(--palette-background));
+  --color-foreground: var(--tune-base-foreground, var(--palette-foreground));
+  --color-muted: var(--tune-base-muted, var(--palette-muted));
+  --color-accent: var(--tune-base-accent, var(--palette-accent));
+  --color-surface: var(--tune-base-surface, color-mix(in oklab, var(--color-foreground) 5%, var(--color-background)));
+  --color-line: var(--tune-base-line, color-mix(in oklab, var(--color-foreground) 16%, transparent));
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: var(--font-sans);
+  --font-display: var(--font-sans);
+  --font-heading: var(--font-display);
+  --font-label: var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/*
+ * Surfaces: one palette, several moods. Put data-surface on a section (or on
+ * <html> for a page-wide shift). Every surface derives from the palette, so a
+ * Lab preview carries across all of them.
+ */
+@layer theme {
+  [data-surface="base"] {
+    --color-background: var(--tune-base-background, var(--palette-background));
+    --color-foreground: var(--tune-base-foreground, var(--palette-foreground));
+    --color-muted: var(--tune-base-muted, var(--palette-muted));
+    --color-accent: var(--tune-base-accent, var(--palette-accent));
+    --color-surface: var(--tune-base-surface, color-mix(in oklab, var(--color-foreground) 5%, var(--color-background)));
+    --color-line: var(--tune-base-line, color-mix(in oklab, var(--color-foreground) 16%, transparent));
+  }
+
+  [data-surface="inverse"] {
+    --color-background: var(--tune-inverse-background, var(--palette-foreground));
+    --color-foreground: var(--tune-inverse-foreground, var(--palette-background));
+    --color-muted: var(--tune-inverse-muted, color-mix(in oklab, var(--palette-background) 72%, var(--palette-foreground)));
+    --color-accent: var(--tune-inverse-accent, var(--palette-accent));
+    --color-surface: var(--tune-inverse-surface, color-mix(in oklab, var(--color-foreground) 7%, var(--color-background)));
+    --color-line: var(--tune-inverse-line, color-mix(in oklab, var(--color-foreground) 22%, transparent));
+  }
+
+  [data-surface="accent"] {
+    --color-background: var(--tune-accent-background, var(--palette-accent));
+    --color-foreground: var(--tune-accent-foreground, var(--palette-background));
+    --color-muted: var(--tune-accent-muted, color-mix(in oklab, var(--palette-background) 82%, var(--palette-accent)));
+    --color-accent: var(--tune-accent-accent, var(--palette-foreground));
+    --color-surface: var(--tune-accent-surface, color-mix(in oklab, var(--color-foreground) 8%, var(--color-background)));
+    --color-line: var(--tune-accent-line, color-mix(in oklab, var(--color-foreground) 30%, transparent));
+  }
+
+  /* Text set over a photograph: no ground of its own, light ink. Pair it with a
+     scrim (a soft darkening of the photo) so the text stays readable. */
+  [data-surface="photo"] {
+    --color-background: var(--tune-photo-background, transparent);
+    --color-foreground: var(--tune-photo-foreground, var(--palette-background));
+    --color-muted: var(--tune-photo-muted, color-mix(in oklab, var(--palette-background) 78%, transparent));
+    --color-accent: var(--tune-photo-accent, var(--palette-background));
+    --color-surface: var(--tune-photo-surface, color-mix(in oklab, var(--palette-foreground) 30%, transparent));
+    --color-line: var(--tune-photo-line, color-mix(in oklab, var(--palette-background) 35%, transparent));
+    --scrim: var(--tune-photo-scrim, color-mix(in oklab, var(--palette-foreground) 60%, transparent));
+  }
+}
