@@ -33,7 +33,7 @@ export default function Contact() {
           © {new Date().getFullYear()} {SITE.name} · {SITE.city}
         </span>
         <a href={SITE.credit.url} target="_blank" rel="noreferrer" className="label text-muted">
-          Website by <span className="ulink text-foreground">{SITE.credit.name}</span>
+          Website brought to life by <span className="ulink text-foreground">{SITE.credit.name}</span>
         </a>
       </footer>
     </section>

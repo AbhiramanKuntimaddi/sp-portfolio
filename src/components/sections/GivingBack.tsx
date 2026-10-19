@@ -16,7 +16,6 @@ export default function GivingBack() {
         <div className="mt-20 grid gap-14 sm:grid-cols-3 sm:gap-8 lg:mt-28">
           {givingBack.map((g, i) => (
             <article key={g.title} className="border-t border-line pt-8" data-reveal>
-              <span className="font-display text-4xl italic text-accent">{NUMERALS[i]}</span>
               <h3 className="mt-8 font-heading text-2xl leading-tight sm:text-3xl">{g.title}</h3>
               <p className="mt-4 max-w-sm leading-relaxed text-muted">{g.body}</p>
             </article>

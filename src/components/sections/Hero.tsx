@@ -13,8 +13,8 @@ export default function Hero() {
       </div>
 
       <div className="mx-auto w-full max-w-(--grid-max)">
-        <p className="label mb-4 text-muted lg:mb-6" data-cue="quiet" data-delay="0.95">
-          <span className="font-display text-base normal-case italic tracking-normal text-foreground">{hero.scripts}</span>
+        <p className="label mb-4 text-accent lg:mb-6" data-cue="quiet" data-delay="0.95">
+          <span className="font-display text-base normal-case italic tracking-normal">{hero.scripts}</span>
           <span className="ml-3">(n.)</span>
         </p>
 
@@ -23,7 +23,7 @@ export default function Hero() {
             {hero.first}
           </span>
           <span className="mt-2 flex flex-col gap-6 lg:mt-0 lg:flex-row lg:items-end lg:justify-between">
-            <span className="block max-w-sm font-display text-2xl italic leading-snug text-muted lg:order-1 lg:text-3xl" data-cue="quiet" data-delay="1.0">
+            <span className="block max-w-sm font-display text-2xl italic leading-snug text-accent lg:order-1 lg:text-3xl" data-cue="quiet" data-delay="1.0">
               {hero.definition}
             </span>
             <span className="headline block self-end font-display text-[16vw] italic lg:order-2 lg:text-[9vw] min-[1680px]:text-[150px]" data-split="chars" data-cue data-emerge data-sand data-delay="0.25">

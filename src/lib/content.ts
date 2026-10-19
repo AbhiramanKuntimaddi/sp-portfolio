@@ -161,6 +161,8 @@ export const next = {
   heading: ["What’s", "Next?"],
   eyebrow: "Upcoming venture",
   title: "Jaipuri Trunk",
+  url: "https://jaipuritrunk.com",
+  urlLabel: "jaipuritrunk.com",
   launch: "Launching early December 2026",
   body: "Her newest venture brings the same eye for craft, colour and material to what we wear: Jaipuri Trunk, a label for Jaipuri juttis and artisanal accessories.",
 };

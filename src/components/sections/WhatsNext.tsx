@@ -26,7 +26,12 @@ export default function WhatsNext() {
           <h3 className="mt-20 font-heading text-6xl leading-none sm:text-7xl">{next.title}</h3>
           <p className="mt-4 font-display text-2xl italic">Jaipuri juttis &amp; artisanal accessories</p>
           <p className="mt-10 max-w-md leading-relaxed">{next.body}</p>
-          <p className="label mt-12">{next.launch}</p>
+          <div className="mt-12 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
+            <p className="label">{next.launch}</p>
+            <a href={next.url} target="_blank" rel="noreferrer" className="font-display text-xl italic">
+              <span className="ulink">{next.urlLabel} ↗</span>
+            </a>
+          </div>
         </article>
       </div>
     </section>
