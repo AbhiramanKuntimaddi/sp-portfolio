@@ -9,7 +9,7 @@ export default function GivingBack() {
     <section id="giving" className="relative z-10 py-32 lg:py-48">
       <div className="mx-auto max-w-(--grid-max) px-gutter">
         <SwaraMark index={4} />
-        <h2 className="headline mt-10 font-heading text-[17vw] lg:text-[9.5vw] min-[1680px]:text-[160px]" data-split="chars" data-cue data-delay="0.15">
+        <h2 className="headline mt-10 font-heading text-[17vw] lg:text-[9.5vw] min-[1680px]:text-[10rem]" data-split="chars" data-cue data-delay="0.15">
           Giving <em className="font-display">back</em>
         </h2>
 

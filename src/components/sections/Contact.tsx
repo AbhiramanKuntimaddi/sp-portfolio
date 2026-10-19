@@ -7,7 +7,7 @@ export default function Contact() {
     <section id="contact" className="relative z-10 flex min-h-dvh flex-col justify-between pb-24 pt-32 lg:pb-8 lg:pt-48">
       <div className="mx-auto w-full max-w-(--grid-max) px-gutter">
         <SwaraMark index={7} />
-        <h2 className="headline mt-10 font-heading text-[21vw] lg:text-[14vw] min-[1680px]:text-[235px]">
+        <h2 className="headline mt-10 font-heading text-[21vw] lg:text-[14vw] min-[1680px]:text-[14.6875rem]">
           <span className="block" data-split="chars" data-cue data-delay="0.15">Let’s</span>
           <em className="block font-display" data-split="chars" data-cue data-delay="0.3">connect.</em>
         </h2>

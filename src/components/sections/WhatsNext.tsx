@@ -8,7 +8,7 @@ export default function WhatsNext() {
       <div className="mx-auto grid max-w-(--grid-max) gap-16 px-gutter lg:grid-cols-12 lg:gap-8">
         <div className="lg:col-span-6">
           <SwaraMark index={6} />
-          <h2 className="headline mt-10 font-heading text-[19vw] lg:text-[10vw] min-[1680px]:text-[170px]">
+          <h2 className="headline mt-10 font-heading text-[19vw] lg:text-[10vw] min-[1680px]:text-[10.625rem]">
             <span className="block" data-split="chars" data-cue data-delay="0.15">{next.heading[0]}</span>
             <em className="block font-display" data-split="chars" data-cue data-delay="0.3">{next.heading[1]}</em>
           </h2>

@@ -80,7 +80,9 @@ export default function SwaraRail() {
       if (beadRef.current && svgRef.current) {
         const u = Math.min(Math.max(resonance.swara / last, 0), 1);
         const h = svgRef.current.clientHeight;
-        beadRef.current.style.transform = `translate(${(offset(u)).toFixed(2)}px, ${(u * h).toFixed(1)}px)`;
+        // The string is drawn in 44 viewBox units; scale its sway to the rail's real width.
+        const sx = svgRef.current.clientWidth / WIDTH;
+        beadRef.current.style.transform = `translate(${(offset(u) * sx).toFixed(2)}px, ${(u * h).toFixed(1)}px)`;
       }
 
       if (frame % 3 === 0) {
@@ -97,7 +99,7 @@ export default function SwaraRail() {
     <aside
       aria-label="Chapters"
       className="fixed right-3 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-center gap-5 lg:flex"
-      style={{ width: WIDTH }}
+      style={{ width: `${WIDTH / 16}rem` }}
     >
       {/* Top: the note, and its place in the octave. */}
       <p className="flex flex-col items-center gap-1.5 text-center">
@@ -110,7 +112,7 @@ export default function SwaraRail() {
       </p>
 
       {/* Middle: the string, with the bead and an invisible fret per chapter. */}
-      <div className="relative h-[min(30vh,260px)]" style={{ width: WIDTH }}>
+      <div className="relative h-[min(30vh,16.25rem)]" style={{ width: `${WIDTH / 16}rem` }}>
         <svg
           ref={svgRef}
           aria-hidden="true"

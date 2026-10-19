@@ -6,7 +6,7 @@ import { SplitText } from "gsap/SplitText";
 import { useGSAP } from "@gsap/react";
 import { SWARAS } from "@/lib/content";
 import { resonance, tuningAt } from "@/lib/resonance";
-import { arrive, initSound, startBow, stopBow } from "@/lib/sound";
+import { arrive, initSound, setMode, startBow, stopBow } from "@/lib/sound";
 import { isEntered, whenEntered } from "@/lib/stage";
 import { withLenis } from "@/lib/smoothScroll";
 
@@ -143,6 +143,7 @@ export default function Conductor() {
       }
     };
 
+    setMode("site");
     const stopSound = initSound();
 
     let detach = () => {};

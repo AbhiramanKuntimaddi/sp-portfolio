@@ -19,14 +19,14 @@ export default function Hero() {
         </p>
 
         <h1 className="font-heading">
-          <span className="headline block text-[25vw] lg:text-[17.5vw] min-[1680px]:text-[290px]" data-split="chars" data-cue data-emerge data-sand data-delay="0.05">
+          <span className="headline block text-[25vw] lg:text-[17.5vw] min-[1680px]:text-[18.125rem]" data-split="chars" data-cue data-emerge data-sand data-delay="0.05">
             {hero.first}
           </span>
           <span className="mt-2 flex flex-col gap-6 lg:mt-0 lg:flex-row lg:items-end lg:justify-between">
             <span className="block max-w-sm font-display text-2xl italic leading-snug text-accent lg:order-1 lg:text-3xl" data-cue="quiet" data-delay="1.0">
               {hero.definition}
             </span>
-            <span className="headline block self-end font-display text-[16vw] italic lg:order-2 lg:text-[9vw] min-[1680px]:text-[150px]" data-split="chars" data-cue data-emerge data-sand data-delay="0.25">
+            <span className="headline block self-end font-display text-[16vw] italic lg:order-2 lg:text-[9vw] min-[1680px]:text-[9.375rem]" data-split="chars" data-cue data-emerge data-sand data-delay="0.25">
               {hero.last}
             </span>
           </span>

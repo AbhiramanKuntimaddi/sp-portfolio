@@ -10,7 +10,7 @@ export default function Journey() {
         <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-7">
             <SwaraMark index={2} />
-            <h2 className="headline mt-10 font-heading text-[17vw] lg:text-[9.5vw] min-[1680px]:text-[160px]" data-split="chars" data-cue data-delay="0.15">
+            <h2 className="headline mt-10 font-heading text-[17vw] lg:text-[9.5vw] min-[1680px]:text-[10rem]" data-split="chars" data-cue data-delay="0.15">
               The <em className="font-display">journey</em>
             </h2>
           </div>

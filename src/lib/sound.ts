@@ -126,11 +126,15 @@ function stringBuffer(e: Engine, semitones: number) {
 }
 
 function pluck(e: Engine, index: number, at: number, velocity = 1) {
+  pluckStep(e, SWARAS[index].step, at, velocity, -0.12 + index * 0.035);
+}
+
+/** Pluck any pitch (semitones from Sa, fractions allowed — the 404's wrong notes). */
+function pluckStep(e: Engine, step: number, at: number, velocity = 1, pan = 0) {
   const { ctx } = e;
-  const step = SWARAS[index].step;
   // The note, and a soft octave above it a breath later — a harp-like halo.
   [
-    { st: step, gain: 0.55 * velocity, pan: -0.12 + index * 0.035, delay: 0 },
+    { st: step, gain: 0.55 * velocity, pan, delay: 0 },
     { st: step + 12, gain: 0.14 * velocity, pan: 0.2, delay: 0.014 },
   ].forEach((n) => {
     const src = ctx.createBufferSource();
@@ -170,7 +174,12 @@ function bowedVoice(e: Engine, semitones: number, at: number, level: number, att
 }
 
 function setChord(e: Engine, index: number, at: number) {
-  if (e.chord?.index === index) return;
+  setTones(e, index, CHORDS[index], at);
+}
+
+/** Crossfade the pad to any set of tones; `key` identifies the chord. */
+function setTones(e: Engine, key: number, tones: number[], at: number) {
+  if (e.chord?.index === key) return;
   const t = Math.max(at, e.ctx.currentTime);
   // The old chord lets go slowly while the new one swells in under it.
   e.chord?.voices.forEach((v) => {
@@ -178,9 +187,8 @@ function setChord(e: Engine, index: number, at: number) {
     v.gain.gain.setTargetAtTime(0, t, 1.1);
     v.oscs.forEach((o) => o.stop(t + 7));
   });
-  const tones = CHORDS[index];
   const level = 0.09 / tones.length;
-  e.chord = { index, voices: tones.map((st) => bowedVoice(e, st, t, level)) };
+  e.chord = { index: key, voices: tones.map((st) => bowedVoice(e, st, t, level)) };
 }
 
 /** A soft hall: decaying stereo noise that darkens as it fades. */
@@ -199,6 +207,76 @@ function hall(ctx: AudioContext, seconds = 4.2) {
     }
   }
   return ir;
+}
+
+/* ---------- The 404: a scale that can't find home ---------- */
+
+/*
+ * Sa Re Ga Ma Pa Dha Ni climb as usual — and the upper Sa never comes. The
+ * last note lands a quarter-tone sharp, or slips back between Ni and Sa, and
+ * hangs over a V7 that never resolves. A breath, and it tries again.
+ */
+const LOST_CHORD_KEY = -1;
+const LOST_MISSES = [12.5, 11.5, 12.5, 11.75];
+const LOST_GAP = 0.36;
+
+let mode: "site" | "lost" = "site";
+let lostTimer = 0;
+let lostNext = 0;
+let lostRound = 0;
+
+function lostPhrase(e: Engine, at: number) {
+  const climb = [0, 2, 4, 5, 7, 9, 11];
+  climb.forEach((st, k) => pluckStep(e, st, at + k * LOST_GAP, 0.5 + k * 0.05, -0.2 + k * 0.06));
+  const miss = LOST_MISSES[lostRound % LOST_MISSES.length];
+  const land = at + climb.length * LOST_GAP + 0.3;
+  pluckStep(e, miss, land, 1, 0.25);
+  pluckStep(e, miss - 12, land + 0.02, 0.35, -0.1);
+  lostRound++;
+  return land + 3.4;
+}
+
+function scheduleLost() {
+  const e = engine;
+  if (!e || mode !== "lost") return;
+  while (lostNext < e.ctx.currentTime + 0.6) lostNext = lostPhrase(e, lostNext);
+}
+
+function startLost(e: Engine, t: number) {
+  setTones(e, LOST_CHORD_KEY, CHORDS[6], t);
+  lostNext = t + 0.5;
+  window.clearInterval(lostTimer);
+  lostTimer = window.setInterval(scheduleLost, 200);
+  scheduleLost();
+}
+
+function stopLost() {
+  window.clearInterval(lostTimer);
+  lostTimer = 0;
+}
+
+/** Which score plays: the site's octave, or the 404's lost scale. */
+export function setMode(next: "site" | "lost") {
+  if (mode === next) return;
+  mode = next;
+  if (next === "site") stopLost();
+  else if (engine && resonance.audible) startLost(engine, engine.ctx.currentTime);
+}
+
+/**
+ * "Return to Sa": the scale finally lands — Ni, then the true upper Sa over
+ * the home chord. Resolves once it has rung long enough to be heard.
+ */
+export function resolveHome() {
+  const e = engine;
+  if (!e || !resonance.audible) return Promise.resolve();
+  stopLost();
+  const t = e.ctx.currentTime + 0.03;
+  pluckStep(e, 11, t, 0.7, 0.1);
+  pluckStep(e, 12, t + 0.2, 1, 0.2);
+  pluckStep(e, 0, t + 0.22, 0.4, -0.15);
+  setTones(e, 7, CHORDS[7], t + 0.2);
+  return new Promise<void>((done) => window.setTimeout(done, 1100));
 }
 
 /* ---------- Engine ---------- */
@@ -269,14 +347,18 @@ async function begin() {
   const t = e.ctx.currentTime;
   e.master.gain.cancelScheduledValues(t);
   e.master.gain.setTargetAtTime(1, t, 0.9);
-  setChord(e, current, t);
-  pluck(e, current, t + 0.25, 0.8);
+  if (mode === "lost") startLost(e, t);
+  else {
+    setChord(e, current, t);
+    pluck(e, current, t + 0.25, 0.8);
+  }
   resonance.audible = true;
   soundChanged();
 }
 
 function hush() {
   const e = engine;
+  stopLost();
   resonance.audible = false;
   soundChanged();
   if (!e) return;
@@ -292,9 +374,9 @@ function hush() {
 
 /**
  * Restore the visitor's choice and arm the first-gesture start. Call once on
- * the client. Returns a cleanup.
+ * the client (home: after the preloader; 404: on any gesture). Returns a cleanup.
  */
-export function initSound() {
+export function initSound({ anyGesture = false }: { anyGesture?: boolean } = {}) {
   try {
     resonance.soundOn = localStorage.getItem(STORAGE_KEY) !== "off";
   } catch {
@@ -303,9 +385,10 @@ export function initSound() {
   soundChanged();
 
   const unlock = (ev: Event) => {
-    // The toggle and the preloader's buttons handle their own clicks, and
-    // nothing plays before the visitor has entered.
-    if (!isEntered() || (ev.target as Element | null)?.closest?.("[data-sound-toggle]")) return;
+    // The toggle and the preloader's buttons handle their own clicks, and on
+    // the home page nothing plays before the visitor has entered (the 404 has
+    // no preloader, so any gesture there will do).
+    if ((!anyGesture && !isEntered()) || (ev.target as Element | null)?.closest?.("[data-sound-toggle]")) return;
     if (resonance.soundOn && !resonance.audible) void begin();
   };
   const events = ["pointerdown", "keydown", "touchend"] as const;

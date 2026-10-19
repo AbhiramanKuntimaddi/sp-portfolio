@@ -8,7 +8,7 @@ export default function Music() {
     <section id="music" className="relative z-10 flex min-h-dvh flex-col justify-center py-32 lg:py-48">
       <div className="mx-auto w-full max-w-(--grid-max) px-gutter">
         <SwaraMark index={5} />
-        <h2 className="headline mt-10 font-heading text-[17vw] lg:text-[11vw] min-[1680px]:text-[185px]">
+        <h2 className="headline mt-10 font-heading text-[17vw] lg:text-[11vw] min-[1680px]:text-[11.5625rem]">
           <span className="block" data-split="chars" data-cue data-delay="0.15">{music.heading[0]}</span>
           <span className="block" data-split="chars" data-cue data-delay="0.3">{music.heading[1]}</span>
           <span className="block font-display italic text-accent" data-split="chars" data-cue data-delay="0.5">{music.heading[2]}</span>

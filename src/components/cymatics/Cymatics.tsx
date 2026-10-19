@@ -301,7 +301,8 @@ export default function Cymatics({
       gl.uniform1i(uDraw.uWidth, W);
       gl.uniform1f(uDraw.uAspect, aspect);
       gl.uniform1f(uDraw.uScale, PLATE_SCALE);
-      gl.uniform1f(uDraw.uSize, 1.5 * dpr);
+      // Grains grow with the screen above 1680px, like the rest of the layout.
+      gl.uniform1f(uDraw.uSize, 1.5 * dpr * Math.max(1, window.innerWidth / 1680));
       gl.uniform1f(uDraw.uIntensity, intensity);
       gl.uniform3f(uDraw.uInk, ink[0], ink[1], ink[2]);
       gl.uniform3f(uDraw.uGlintInk, glint[0], glint[1], glint[2]);

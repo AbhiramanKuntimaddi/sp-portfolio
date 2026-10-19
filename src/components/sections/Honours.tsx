@@ -38,7 +38,7 @@ export default function Honours() {
     <section id="honours" ref={scope} className="relative z-10 py-32 lg:py-48" onPointerMove={follow}>
       <div className="mx-auto max-w-(--grid-max) px-gutter">
         <SwaraMark index={3} />
-        <h2 className="headline mt-10 font-heading text-[17vw] lg:text-[9.5vw] min-[1680px]:text-[160px]" data-split="chars" data-cue data-delay="0.15">
+        <h2 className="headline mt-10 font-heading text-[17vw] lg:text-[9.5vw] min-[1680px]:text-[10rem]" data-split="chars" data-cue data-delay="0.15">
           Recog<em className="font-display">nition</em>
         </h2>
         <p className="mt-8 max-w-md text-muted" data-reveal>

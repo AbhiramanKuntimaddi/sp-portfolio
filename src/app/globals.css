@@ -34,7 +34,7 @@
   --grid-columns: 4;
   --grid-gutter: 1.25rem;
   --grid-margin: 1.25rem;
-  --grid-max: 1680px;
+  --grid-max: 105rem; /* 1680px at the base size; grows with the root above 1680px */
   --grid-baseline: 0.5rem;
 }
 
@@ -58,6 +58,18 @@
 
 html {
   background-color: var(--color-background);
+}
+
+/*
+ * Large displays: above 1680px the whole design scales up in proportion —
+ * the root size grows with the viewport, and every size is in rem, so a
+ * 2560px or 4K screen shows the same composition, just larger.
+ * (1680 / 105 = 16px exactly at the breakpoint, so there's no jump.)
+ */
+@media (min-width: 1680px) {
+  html {
+    font-size: calc(100vw / 105);
+  }
 }
 
 body {
