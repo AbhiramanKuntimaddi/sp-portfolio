@@ -37,7 +37,7 @@ export function SoundToggle({ className = "" }: { className?: string }) {
       aria-label={state.on ? "Turn sound off" : "Turn sound on"}
       className={`label group inline-flex items-center gap-3 ${className}`}
     >
-      <span className="flex h-3 items-end gap-[3px]" aria-hidden="true">
+      <span className="flex h-3 items-end gap-0.75" aria-hidden="true">
         {[0.55, 1, 0.75, 0.4].map((h, i) => (
           <span
             key={i}
@@ -104,7 +104,7 @@ export default function Header() {
       />
       <div className="relative mx-auto flex max-w-(--grid-max) items-center gap-5 px-gutter py-5 lg:gap-8 lg:py-7">
         <a href="#top" onClick={(e) => scrollToId(e, "#top")} className="flex shrink-0 items-baseline gap-3">
-          <span className="font-display text-xl italic leading-none text-accent">S·P</span>
+          <span className="font-display text-xl italic leading-none text-accent">SP</span>
           <span className="label hidden sm:inline">{SITE.name}</span>
         </a>
         <span className="flex-1" />
