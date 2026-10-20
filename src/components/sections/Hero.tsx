@@ -32,9 +32,12 @@ export default function Hero() {
           </p>
 
           <h1 className="relative font-heading">
-            {/* Her name keeps its capital: the headline style lowercases everything else. */}
+            {/* Her name keeps its capital: the headline style lowercases everything else.
+                Sized so the whole word fits inside the gutters at every width (at
+                19vw it was wider than a phone and broke as "Spandan / a"), and
+                never allowed to wrap. */}
             <span
-              className="headline block text-[19vw] lg:text-[18vw] min-[1680px]:text-[19rem]"
+              className="headline block whitespace-nowrap text-[17.5vw] lg:text-[17vw] min-[1680px]:text-[19rem]"
               style={{ textTransform: "none" }}
               data-split="chars"
               data-cue
