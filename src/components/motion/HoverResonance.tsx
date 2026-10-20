@@ -26,6 +26,8 @@ export default function HoverResonance() {
       current = el;
       resonance.hoverEl = el;
       gsap.to(resonance, { hoverStrength: 1, duration: 0.55, ease: "power2.out", overwrite: true });
+      // Controls that make their own sound (the footer's string) don't add the hover tone.
+      if (el.closest("[data-no-tone]")) return;
       const r = el.getBoundingClientRect();
       hoverTone(((r.left + r.width / 2) / window.innerWidth) * 2 - 1);
     };

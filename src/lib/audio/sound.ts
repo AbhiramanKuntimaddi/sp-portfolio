@@ -1155,6 +1155,23 @@ export function arrive(index: number) {
   }, CHORD_SETTLE_MS);
 }
 
+/**
+ * The footer's string: pluck any swara of the octave by hand. A click is a
+ * gesture, so if sound is off or hasn't started, this turns it on first and
+ * plucks once it's going.
+ */
+export function playSwara(index: number, retry = true) {
+  const e = engine;
+  if (mode !== "site") return;
+  if (!e || !resonance.soundOn || !resonance.audible) {
+    if (!retry) return;
+    setSoundOn(true);
+    window.setTimeout(() => playSwara(index, false), 300);
+    return;
+  }
+  pluck(e, index, e.ctx.currentTime + LOOKAHEAD, 0.85);
+}
+
 let bow: Voice[] | null = null;
 
 /** Press and hold: a bowed string sustains the current chapter's note. */

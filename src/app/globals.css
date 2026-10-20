@@ -319,6 +319,80 @@ button:hover .ulink,
   }
 }
 
+/*
+ * The drafting cursor (components/motion/Cursor.tsx): mouse, trackpad and
+ * Apple Pencil. A crosshair, and four corner marks that frame the pointer — or snap
+ * around whatever clickable thing it's over. Each piece is its own fixed
+ * layer moved by transform alone (no blend modes, no size changes), so it
+ * costs next to nothing while the sand animates. The system cursor is hidden
+ * only while this one is showing.
+ */
+/* Set only while the custom cursor is showing (a mouse, trackpad or Pencil). */
+html.has-cursor,
+html.has-cursor * {
+  cursor: none !important;
+}
+.cursor-cross,
+.cursor-mark {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  will-change: transform;
+  contain: layout paint;
+}
+/*
+ * The crosshair: ivory hairlines, each edged in the background's dark, so it
+ * reads on a light photo or the brass button as well as on the sand — the
+ * job the inverting blend mode did, at none of its cost.
+ */
+.cursor-cross {
+  width: 17px;
+  height: 17px;
+  margin: -8.5px 0 0 -8.5px;
+  background:
+    linear-gradient(var(--color-foreground), var(--color-foreground)) center / 1px 100% no-repeat,
+    linear-gradient(var(--color-foreground), var(--color-foreground)) center / 100% 1px no-repeat,
+    linear-gradient(var(--color-background), var(--color-background)) center / 3px 100% no-repeat,
+    linear-gradient(var(--color-background), var(--color-background)) center / 100% 3px no-repeat;
+}
+/*
+ * A corner mark: a small brass L, placed by its outer corner and turned to
+ * face inwards (by the cursor's script). Framing a control, the marks reach further along its edges
+ * (a size change on a tiny, contained layer: no page layout is touched).
+ */
+.cursor-mark {
+  width: 8px;
+  height: 8px;
+  border: 0 solid var(--color-accent);
+  transition:
+    width 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cursor-mark.is-framing {
+  width: 12px;
+  height: 12px;
+}
+.cursor-mark[data-corner="tl"] {
+  border-left-width: 1px;
+  border-top-width: 1px;
+}
+.cursor-mark[data-corner="tr"] {
+  border-right-width: 1px;
+  border-top-width: 1px;
+}
+.cursor-mark[data-corner="bl"] {
+  border-left-width: 1px;
+  border-bottom-width: 1px;
+}
+.cursor-mark[data-corner="br"] {
+  border-right-width: 1px;
+  border-bottom-width: 1px;
+}
+
 /* Hidden until GSAP reveals them; stays visible if JS or motion is off. */
 .js [data-reveal],
 .js [data-split],

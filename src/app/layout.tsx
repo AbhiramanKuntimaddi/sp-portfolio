@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Allura, Montserrat } from "next/font/google";
 import "./globals.css";
 import { DesignLab, type DesignLabConfig } from "design-lab";
+import Cursor from "@/components/motion/Cursor";
 import SmoothScrollProvider from "@/components/motion/SmoothScrollProvider";
 import { SITE } from "@/lib/content";
 
@@ -69,6 +70,7 @@ export default function RootLayout({
       </head>
       <body>
         <SmoothScrollProvider>{children}</SmoothScrollProvider>
+        <Cursor />
         {process.env.NODE_ENV === "development" && <DesignLab config={labConfig} />}
       </body>
     </html>
