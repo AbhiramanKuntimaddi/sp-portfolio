@@ -1,5 +1,5 @@
 /*
- * The site's own music, under the scroll: two switches. (The preloader's
+ * The site's own music, under the scroll: three switches. (The preloader's
  * raga has its own, in ./preload.ts.)
  *
  * As you scroll, each chapter plays its swara; underneath it sits the
@@ -26,3 +26,10 @@ export const SITE_BACKGROUND = "strings" as SiteBackground;
  * (warm nylon, with a soft octave above), "veena" or "mandolin".
  */
 export const SITE_INSTRUMENT = "guitar" as SiteInstrument;
+
+/**
+ * How loud the background is, from 0 (silent) to 1 (full): the strings'
+ * chords and the drone (the tambura or sruti box, under the welcome raga
+ * too). The scroll notes and the raga itself aren't affected.
+ */
+export const SITE_BACKGROUND_VOLUME = 0.25;

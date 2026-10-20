@@ -25,7 +25,7 @@ import {
   type TalaName,
 } from "./ragas";
 import { PRELOAD_DRONE, PRELOAD_INSTRUMENT, PRELOAD_RAGA, PRELOAD_TALA, PRELOAD_TUNING } from "./preload";
-import { SITE_BACKGROUND, SITE_INSTRUMENT } from "./site";
+import { SITE_BACKGROUND, SITE_BACKGROUND_VOLUME, SITE_INSTRUMENT } from "./site";
 import { tune } from "./tuning";
 
 /*
@@ -304,7 +304,7 @@ const SITE_STRINGS = SITE_BACKGROUND === "strings" || SITE_BACKGROUND.endsWith("
 
 function setChord(e: Engine, index: number, at: number) {
   if (!SITE_STRINGS) return;
-  setTones(e, index, CHORDS[index], at);
+  setTones(e, index, CHORDS[index], at, SITE_BACKGROUND_VOLUME);
 }
 
 /** Crossfade the pad to any set of tones; `key` identifies the chord. */
@@ -325,7 +325,7 @@ function release(voices: Voice[], t: number, tau: number, stopAfter: number) {
   });
 }
 
-function setTones(e: Engine, key: number, tones: number[], at: number) {
+function setTones(e: Engine, key: number, tones: number[], at: number, volume = 1) {
   if (e.chord?.index === key) return;
   const t = Math.max(at, e.ctx.currentTime);
   // The old chord lets go quickly while the new one swells in, so two
@@ -336,7 +336,7 @@ function setTones(e: Engine, key: number, tones: number[], at: number) {
   }
   // Never more than one chord ringing out behind the current one.
   while (releasing.length > 1) release(releasing.shift()!, t, 0.08, 0.5);
-  const level = 0.09 / tones.length;
+  const level = (0.09 * volume) / tones.length;
   e.chord = { index: key, voices: tones.map((st) => bowedVoice(e, st, t, level, 1)) };
 }
 
@@ -538,7 +538,10 @@ function startDrone(e: Engine, at: number, kind: "tambura" | "sruti" | "none", f
   drone = null;
   if (kind === "none") return;
   const pitches = (kind === "tambura" ? [fifth - 12, 0, 0, -12] : [-12, fifth - 12, 0]).map((st) => tune(st, PRELOAD_TUNING));
-  const voice = kind === "tambura" ? startTambura(stage(e), pitches, at, PRELOAD_TUNING === "classical") : startSruti(stage(e), pitches, at);
+  const voice =
+    kind === "tambura"
+      ? startTambura(stage(e), pitches, at, PRELOAD_TUNING === "classical", 0.075 * SITE_BACKGROUND_VOLUME)
+      : startSruti(stage(e), pitches, at, 0.045 * SITE_BACKGROUND_VOLUME);
   drone = { key: `${kind}:${fifth}`, stop: voice.stop };
 }
 
