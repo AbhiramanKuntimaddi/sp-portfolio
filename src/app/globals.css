@@ -194,6 +194,30 @@ dd {
     0 0 14px var(--color-background);
 }
 
+/* On a slow machine (the sand steps its quality down, see components/cymatics/quality.ts) the
+   halo drops to one cheap layer: the sand is sparser there anyway. */
+html[data-quality="low"]
+  :where(main, [data-gated], .preloader)
+  :where(p, li, dd, dt, figcaption, blockquote, h1, h2, h3, a, button, .label):not(
+    [data-surface="accent"] *,
+    [data-no-halo],
+    [data-no-halo] *
+  ) {
+  text-shadow: 0 0 6px var(--color-background);
+}
+
+/*
+ * Title letters (split by the conductor, components/motion/cues.ts). They're
+ * spans, so copying a title gives the word rather than one letter per line,
+ * but spans are inline, and inline boxes ignore transforms: without this the
+ * letters can't move at all. Words stay whole so a line never breaks
+ * inside one.
+ */
+.grain,
+.grain-word {
+  display: inline-block;
+}
+
 /* Sections that drift and dim on scroll get their own GPU layer, so moving
    them never repaints their text. */
 [data-exit] {
@@ -204,14 +228,16 @@ dd {
 }
 
 /*
- * Links: on hover a brass line sweeps in beneath the words and the text warms
- * towards brass, while the sand rings around the link and a harmonic sounds
- * (components/HoverResonance.tsx). On the brass card the line stays in its ink.
+ * Links: on hover a brass line runs in beneath the words from the left and,
+ * when you leave, runs out to the right — like a bow drawn across a string —
+ * while the text warms towards brass and the arrow leans the way it points.
+ * The sand rings around the link and a harmonic sounds meanwhile
+ * (components/motion/HoverResonance.tsx). On the brass card the line stays in its ink.
  */
 .ulink {
   background-image: linear-gradient(90deg, var(--color-accent), var(--color-accent));
   background-size: 0% 1px;
-  background-position: 0 100%;
+  background-position: 100% 100%;
   background-repeat: no-repeat;
   transition:
     background-size 0.7s cubic-bezier(0.65, 0, 0.35, 1),
@@ -221,12 +247,76 @@ a:hover .ulink,
 button:hover .ulink,
 .ulink:hover {
   background-size: 100% 1px;
+  background-position: 0 100%;
 }
 :where(a, button):hover .ulink:not([data-surface="accent"] *) {
   color: color-mix(in oklab, var(--color-foreground) 45%, var(--color-accent));
 }
 [data-surface="accent"] .ulink {
   background-image: linear-gradient(90deg, currentColor, currentColor);
+}
+
+.arrow {
+  display: inline-block;
+  transition: translate 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+:where(a, button):hover .arrow[data-dir="ne"] {
+  translate: 0.18em -0.18em;
+}
+:where(a, button):hover .arrow[data-dir="e"] {
+  translate: 0.3em 0;
+}
+:where(a, button):hover .arrow[data-dir="n"] {
+  translate: 0 -0.3em;
+}
+
+/*
+ * Strings: list rows and tiles hang on a hairline instead of a border. It is
+ * drawn across as the row arrives (the conductor animates --string), and on
+ * hover it fills with brass from the left and empties to the right, while the
+ * row's heading warms and the rows beside it step back.
+ */
+[data-string] {
+  position: relative;
+  --string: 1;
+}
+[data-string]::before,
+[data-string]::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  pointer-events: none;
+}
+[data-string]::before {
+  background: var(--color-line);
+  transform: scaleX(var(--string));
+  transform-origin: 0 50%;
+}
+[data-string]::after {
+  background: var(--color-accent);
+  transform: scaleX(0);
+  transform-origin: 100% 50%;
+  transition: transform 0.9s cubic-bezier(0.65, 0, 0.35, 1);
+}
+[data-string] > * {
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+[data-string] [data-string-title] {
+  transition: color 0.6s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-string]:hover::after {
+    transform: scaleX(1);
+    transform-origin: 0 50%;
+  }
+  [data-string]:hover [data-string-title] {
+    color: var(--color-accent);
+  }
+  [data-strings]:has(> [data-string]:hover) > [data-string]:not(:hover) > * {
+    opacity: 0.38;
+  }
 }
 
 /* Hidden until GSAP reveals them; stays visible if JS or motion is off. */
@@ -243,14 +333,14 @@ button:hover .ulink,
   }
 }
 
-/* Stages: while the preloader tunes the plate, the page waits (see lib/stage.ts). */
+/* Stages: while the preloader tunes the plate, the page waits (see lib/state/stage.ts). */
 [data-gated] {
   transition:
     opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
     visibility 0.6s;
 }
 /* The header and the scale rail arrive after the name has risen. */
-html[data-stage="entered"] [data-gated="chrome"] {
+html[data-stage="entered"] [data-gated="frame"] {
   transition:
     opacity 1.4s cubic-bezier(0.22, 1, 0.36, 1) 1.5s,
     visibility 0s 1.5s;
@@ -321,6 +411,13 @@ html[data-stage="loading"] .plate-fade {
     );
 }
 
+/* The 404's wrong-note line, each time it changes. */
+@keyframes note-in {
+  from {
+    opacity: 0;
+  }
+}
+
 @keyframes sound-bar {
   from {
     transform: scaleY(0.2);
@@ -330,9 +427,12 @@ html[data-stage="loading"] .plate-fade {
   }
 }
 
+/* Selected text drops the reading halo: the dark glow round each letter
+   looked like a shadow on the brass highlight. */
 ::selection {
   background: var(--color-accent);
   color: var(--color-background);
+  text-shadow: none;
 }
 
 :focus-visible {

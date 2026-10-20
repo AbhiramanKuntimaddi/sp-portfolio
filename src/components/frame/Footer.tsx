@@ -1,7 +1,7 @@
 "use client";
 
 import { SITE } from "@/lib/content";
-import { scrollToSection } from "./Header";
+import { scrollToSection } from "@/lib/scroll";
 
 /*
  * The site footer, separate from the Contact chapter: one quiet row on a
@@ -20,7 +20,7 @@ export default function Footer() {
           onClick={() => scrollToSection("top")}
           className="label group w-fit cursor-pointer text-foreground sm:justify-self-center"
         >
-          <span className="ulink">Back to Sa</span> ↑
+          <span className="ulink">Back to Sa</span> <span className="arrow" data-dir="n" aria-hidden="true">↑</span>
         </button>
         <a
           href={SITE.credit.url}

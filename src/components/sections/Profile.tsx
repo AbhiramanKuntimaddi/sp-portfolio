@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { hero, profile, SITE } from "@/lib/content";
-import Emphasis from "../Emphasis";
+import Emphasis from "@/components/ui/Emphasis";
 import SwaraMark from "./SwaraMark";
 
 /* Re — who she is. */
@@ -15,7 +15,7 @@ export default function Profile() {
 
         <div className="mt-16 grid gap-16 lg:mt-24 lg:grid-cols-12 lg:gap-8">
           <div className="relative lg:col-span-5">
-            <div className="relative aspect-[3/4] w-[82%] overflow-hidden rounded-[2px]" data-reveal="image">
+            <div className="relative aspect-3/4 w-[82%] overflow-hidden rounded-xs" data-reveal="image">
               <Image
                 src="/img/portrait.jpg"
                 alt="Spandana Puppala"
@@ -25,7 +25,7 @@ export default function Profile() {
               />
             </div>
             <div
-              className="absolute -bottom-12 right-0 aspect-[3/4] w-[44%] overflow-hidden rounded-[2px] ring-8 ring-background lg:-bottom-20"
+              className="absolute -bottom-12 right-0 aspect-3/4 w-[44%] overflow-hidden rounded-xs ring-8 ring-background lg:-bottom-20"
               data-reveal="image"
               data-delay="0.3"
             >
@@ -42,7 +42,7 @@ export default function Profile() {
           <div className="lg:col-span-6 lg:col-start-7">
             {/* The lead: larger and lighter than everything around it. */}
             <p
-              className="font-heading text-[1.6rem] font-medium leading-[1.25] tracking-tight sm:text-3xl lg:text-[2.2rem]"
+              className="font-heading text-[1.6rem] font-medium leading-tight tracking-tight sm:text-3xl lg:text-[2.2rem]"
               data-split="lines"
               data-cue
               data-delay="0.45"
@@ -76,7 +76,7 @@ export default function Profile() {
             <p className="mt-12 text-sm text-muted" data-reveal>
               {profile.studioLine}{" "}
               <a href={SITE.studioUrl} target="_blank" rel="noreferrer" className="font-semibold text-foreground">
-                <span className="ulink">SP Design Studio</span> ↗
+                <span className="ulink">SP Design Studio</span> <span className="arrow" data-dir="ne" aria-hidden="true">↗</span>
               </a>
             </p>
           </div>

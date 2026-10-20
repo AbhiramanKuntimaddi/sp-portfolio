@@ -1,5 +1,5 @@
 import { next } from "@/lib/content";
-import Emphasis from "../Emphasis";
+import Emphasis from "@/components/ui/Emphasis";
 import SwaraMark from "./SwaraMark";
 
 /* Ni — the leading note, pulling towards what comes next. */
@@ -21,7 +21,7 @@ export default function WhatsNext() {
           data-reveal
         >
           <span className="label">{next.eyebrow}</span>
-          <h3 className="mt-16 font-heading text-5xl font-extrabold leading-none tracking-[-0.05em] sm:text-6xl">{next.title}</h3>
+          <h3 className="mt-16 font-heading text-5xl font-extrabold leading-none tracking-tighter sm:text-6xl">{next.title}</h3>
           <p className="mt-4 text-lg font-semibold tracking-tight">Jaipuri juttis &amp; artisanal accessories</p>
           <p className="mt-8 max-w-md leading-[1.75]">
             <Emphasis text={next.body} />
@@ -29,7 +29,7 @@ export default function WhatsNext() {
           <div className="mt-12 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
             <p className="label">{next.launch}</p>
             <a href={next.url} target="_blank" rel="noreferrer" className="font-semibold">
-              <span className="ulink">{next.urlLabel}</span> ↗
+              <span className="ulink">{next.urlLabel}</span> <span className="arrow" data-dir="ne" aria-hidden="true">↗</span>
             </a>
           </div>
         </article>

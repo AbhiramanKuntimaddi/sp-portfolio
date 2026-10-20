@@ -4,8 +4,8 @@ import { useRef } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { SWARAS } from "@/lib/content";
-import { resonance, tuningAt } from "@/lib/resonance";
-import { scrollToSection } from "./Header";
+import { resonance, tuningAt } from "@/lib/state/resonance";
+import { scrollToSection } from "@/lib/scroll";
 
 const WIDTH = 44;
 const MID = WIDTH / 2;
@@ -134,7 +134,7 @@ export default function SwaraRail() {
         <span
           ref={beadRef}
           aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-0 -ml-[3.5px] -mt-[3.5px] size-[7px] rounded-full bg-accent"
+          className="pointer-events-none absolute left-1/2 top-0 ml-[-3.5px] mt-[-3.5px] size-1.75 rounded-full bg-accent"
         />
         <nav aria-label="Jump to a chapter" className="absolute inset-0">
           <ol className="flex h-full flex-col justify-between">

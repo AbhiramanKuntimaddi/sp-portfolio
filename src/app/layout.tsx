@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Allura, Montserrat } from "next/font/google";
 import "./globals.css";
 import { DesignLab, type DesignLabConfig } from "design-lab";
-import SmoothScrollProvider from "@/components/SmoothScrollProvider";
+import SmoothScrollProvider from "@/components/motion/SmoothScrollProvider";
 import { SITE } from "@/lib/content";
 
 // Montserrat carries everything structural: ExtraBold headlines, text, labels, readouts.

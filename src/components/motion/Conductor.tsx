@@ -5,10 +5,11 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
 import { useGSAP } from "@gsap/react";
 import { SWARAS } from "@/lib/content";
-import { resonance, tuningAt } from "@/lib/resonance";
-import { arrive, initSound, setMode, startBow, stopBow } from "@/lib/sound";
-import { isEntered, whenEntered } from "@/lib/stage";
-import { withLenis } from "@/lib/smoothScroll";
+import { resonance, tuningAt } from "@/lib/state/resonance";
+import { arrive, initSound, setMode, startBow, stopBow } from "@/lib/audio/sound";
+import { isEntered, whenEntered } from "@/lib/state/stage";
+import { withLenis } from "@/lib/scroll";
+import { buildCue, GRAIN, pluckLines, SHARP, SOFT } from "./cues";
 
 gsap.registerPlugin(ScrollTrigger, SplitText, useGSAP);
 
@@ -23,147 +24,6 @@ const smoothstep = (a: number, b: number, x: number) => {
 // when that edge is near the middle of the screen.
 const RETUNE_FROM = 0.72;
 const RETUNE_TO = 0.28;
-
-const EASE = "power4.out";
-const SOFT = { autoAlpha: 0, y: 24, filter: "blur(8px)" };
-const SHARP = { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 1.2, ease: EASE };
-const QUIET_FROM = { autoAlpha: 0, y: 12 };
-const QUIET_TO = { autoAlpha: 1, y: 0, duration: 1, ease: "power3.out" };
-
-/**
- * One chapter's entrance: its swara mark, its title and anything else marked
- * `data-cue`, placed on a timeline at their `data-delay`. Played when the
- * chapter's note sounds, so the music and the words arrive together.
- */
-/**
- * Pluck a title like a string. The pieces (letters or lines) appear in place,
- * then vibrate as a standing wave across the word that rings down to rest —
- * no masks, no sliding, no zoom. `loops` is the wave's shape: the chapter's
- * place in the octave (Sa = 1 bow, Re = 2 loops, Ga = 3…), so every
- * chapter's title rings a little differently.
- */
-function pluckTitle(
-  tl: gsap.core.Timeline,
-  el: HTMLElement,
-  parts: Element[],
-  at: number,
-  loops: number,
-  onDone: () => void,
-) {
-  const n = parts.length;
-  const fontSize = parseFloat(getComputedStyle(el).fontSize) || 48;
-  // Letters swing further than whole lines.
-  const amp = fontSize * (n > 6 ? 0.07 : 0.035);
-  const RING = 1.5; // seconds to ring down
-  const HZ = 5.5; // visible vibrations per second
-  const spread = Math.min(0.35, n * 0.03);
-
-  tl.set(el, { autoAlpha: 1 }, at);
-  tl.fromTo(parts, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3, ease: "power1.out", stagger: { amount: spread } }, at);
-
-  const state = { t: 0 };
-  const setY = parts.map((p) => gsap.quickSetter(p, "y", "px"));
-  tl.to(
-    state,
-    {
-      t: RING,
-      duration: RING,
-      ease: "none",
-      onUpdate: () => {
-        const t = state.t;
-        const decay = Math.exp(-t * 3.2);
-        parts.forEach((_, i) => {
-          const x = (i + 0.5) / n;
-          const shape = Math.sin(loops * Math.PI * x);
-          setY[i](amp * shape * decay * Math.sin(2 * Math.PI * HZ * t));
-        });
-      },
-      onComplete: () => {
-        gsap.set(parts, { clearProps: "transform" });
-        onDone();
-      },
-    },
-    at,
-  );
-}
-
-function buildCue(section: HTMLElement, loops = 1) {
-  const tl = gsap.timeline({ paused: true });
-  section.querySelectorAll<HTMLElement>("[data-cue]").forEach((el) => {
-    const at = parseFloat(el.dataset.delay ?? "0");
-    const kind = el.dataset.cue;
-
-    // The hero's name condenses out of the sand that spelled it: no masks, the
-    // letters sharpen from a blur in random order, exactly where the grains were.
-    // A script word condenses as one piece (splitting it would break its joins).
-    if (el.dataset.emerge === "whole") {
-      tl.fromTo(
-        el,
-        { autoAlpha: 0, filter: "blur(16px)" },
-        { autoAlpha: 1, filter: "blur(0px)", duration: 1.6, ease: "power3.out" },
-        at,
-      );
-      return;
-    }
-
-    // A script word is written in: revealed left to right, like a pen stroke.
-    // The insets reach past the box so swashes and descenders aren't cut.
-    if (kind === "write") {
-      tl.set(el, { autoAlpha: 1 }, at);
-      tl.fromTo(
-        el,
-        { clipPath: "inset(-40% 100% -40% -10%)" },
-        { clipPath: "inset(-40% -10% -40% -10%)", duration: 1.5, ease: "power2.inOut" },
-        at,
-      );
-      return;
-    }
-
-    if (el.dataset.emerge !== undefined) {
-      const split = SplitText.create(el, { type: "chars" });
-      tl.set(el, { autoAlpha: 1 }, at);
-      tl.fromTo(
-        split.chars,
-        { autoAlpha: 0, filter: "blur(14px)" },
-        { autoAlpha: 1, filter: "blur(0px)", duration: 1.3, ease: "power3.out", stagger: { amount: 0.55, from: "random" } },
-        at,
-      );
-      tl.call(() => split.revert(), [], at + 1.9);
-      return;
-    }
-
-    // Titles are plucked like a string (see pluckTitle); afterwards the text
-    // is handed back to the browser so it reflows on resize.
-    if (el.dataset.split) {
-      const byChar = el.dataset.split === "chars";
-      const split = SplitText.create(el, { type: byChar ? "words,chars" : "lines" });
-      pluckTitle(tl, el, byChar ? split.chars : split.lines, at, loops, () => split.revert());
-      return;
-    }
-
-    if (kind === "mark") {
-      tl.set(el, { autoAlpha: 1 }, at);
-      tl.from(el.querySelectorAll("[data-mark-line]"), { scaleX: 0, transformOrigin: "0% 50%", duration: 1.1, ease: "expo.inOut" }, at);
-      tl.from(el.querySelectorAll("[data-mark-part]"), { autoAlpha: 0, y: 10, duration: 0.9, ease: EASE, stagger: 0.08 }, at + 0.15);
-      return;
-    }
-
-    if (kind === "stagger") {
-      tl.set(el, { autoAlpha: 1 }, at);
-      tl.fromTo(el.children, QUIET_FROM, { ...QUIET_TO, stagger: 0.07 }, at);
-      return;
-    }
-
-    // Small supporting text: a short, clean rise — no blur on fine type.
-    if (kind === "quiet") {
-      tl.fromTo(el, QUIET_FROM, QUIET_TO, at);
-      return;
-    }
-
-    tl.fromTo(el, SOFT, SHARP, at);
-  });
-  return tl;
-}
 
 /*
  * Conducts the page: turns Lenis's scroll into a position in the octave
@@ -280,6 +140,10 @@ export default function Conductor() {
             // the chapter is well into view anyway.
             ScrollTrigger.create({ trigger: section, start: "top 40%", once: true, onEnter: () => playCue(i) });
           });
+          // Splitting the titles can nudge their heights; re-measure the chapter
+          // boundaries (only ours — a full ScrollTrigger refresh here would
+          // rewind every animation set up a moment ago).
+          measure(window.scrollY);
           // The hero plays as the plate is struck; anything already passed plays too.
           for (let i = 0; i <= chapter; i++) playCue(i);
 
@@ -287,7 +151,7 @@ export default function Conductor() {
           gsap.utils.toArray<HTMLElement>("[data-split]:not([data-cue])").forEach((el) => {
             const split = SplitText.create(el, { type: "lines" });
             const tl = gsap.timeline({ paused: true });
-            pluckTitle(tl, el, split.lines, 0, 1, () => split.revert());
+            pluckLines(tl, el, split.lines, 0, 1, () => split.revert());
             ScrollTrigger.create({ trigger: el, start: "top 86%", once: true, onEnter: () => tl.play() });
           });
 
@@ -322,34 +186,73 @@ export default function Conductor() {
             });
           });
 
+          // Rows and tiles hang on a string (globals.css, [data-string]): the
+          // hairline is drawn across first, then the row's contents settle in.
+          // A tile with its own ground fades in as its string is drawn.
+          const rows = gsap.utils.toArray<HTMLElement>("[data-reveal][data-string]");
+          rows.forEach((row) => {
+            const bg = getComputedStyle(row).backgroundColor;
+            const solid = bg !== "transparent" && !/rgba\(.*,\s*0\)$/.test(bg);
+            gsap.set(row, { autoAlpha: solid ? 0 : 1, "--string": 0 });
+            // The CSS hover fade (globals.css) would drag behind every frame
+            // of the reveal, so it's switched off until the row has arrived.
+            gsap.set(row.children, { autoAlpha: 0, y: 14, transition: "none" });
+          });
+          ScrollTrigger.batch(rows, {
+            start: "top 90%",
+            once: true,
+            onEnter: (batch) =>
+              batch.forEach((row, i) => {
+                const d = i * 0.14;
+                gsap.to(row, { autoAlpha: 1, duration: 0.8, ease: "power2.out", delay: d });
+                gsap.to(row, { "--string": 1, duration: 1.4, ease: "expo.inOut", delay: d });
+                gsap.to(row.children, {
+                  autoAlpha: 1,
+                  y: 0,
+                  duration: 1,
+                  ease: "power3.out",
+                  delay: d + 0.35,
+                  stagger: 0.07,
+                  // Handed back to CSS, which dims the other rows on hover.
+                  clearProps: "opacity,visibility,transform,transition",
+                });
+              }),
+          });
+
           // Everything else enters in reading order, whatever arrives together.
-          // List rows also wipe in from the left as they rise.
-          const rest = "[data-reveal]:not([data-cue]):not([data-reveal='image']):not([data-prose])";
+          const rest = "[data-reveal]:not([data-cue]):not([data-reveal='image']):not([data-prose]):not([data-string])";
           gsap.set(rest, SOFT);
           ScrollTrigger.batch(rest, {
             start: "top 88%",
             once: true,
-            onEnter: (batch) => {
-              gsap.to(batch, { ...SHARP, stagger: 0.12, overwrite: true });
-              const rows = batch.filter((el) => el.tagName === "LI" || el.tagName === "ARTICLE");
-              if (rows.length) {
-                gsap.fromTo(
-                  rows,
-                  { clipPath: "inset(-20% 100% -20% 0%)" },
-                  {
-                    clipPath: "inset(-20% 0% -20% 0%)",
-                    duration: 1.3,
-                    ease: "expo.inOut",
-                    stagger: 0.12,
-                    clearProps: "clipPath",
-                  },
-                );
-              }
-            },
+            onEnter: (batch) => gsap.to(batch, { ...SHARP, stagger: 0.12, overwrite: true }),
           });
 
-          // Exits: as a chapter's end leaves the screen, it recedes — drifting up
-          // and dimming — while the next one arrives. Scrubbed to the
+          // Titles scatter back into sand only as they actually leave: from the
+          // moment a title's top meets the top of the screen until it's gone —
+          // never while its chapter is still being read. Scrubbed, so
+          // scrolling back gathers the letters again. (The closing title never
+          // leaves.)
+          gsap.utils.toArray<HTMLElement>("[data-exit] [data-grains]").forEach((el) => {
+            const hero = !!el.closest('[data-exit="hero"]');
+            gsap.fromTo(
+              el.querySelectorAll(`.${GRAIN}`),
+              { xPercent: 0, yPercent: 0, rotation: 0, opacity: 1 },
+              {
+                xPercent: "random(-90, 90)",
+                yPercent: hero ? "random(-110, -20)" : "random(-170, -40)",
+                rotation: "random(-40, 40)",
+                opacity: 0,
+                ease: "power1.in",
+                stagger: { amount: 0.6, from: "random" },
+                immediateRender: false,
+                scrollTrigger: { trigger: el, start: "top top", end: "bottom top", scrub: 0.6 },
+              },
+            );
+          });
+
+          // Exits: as a chapter's end leaves the screen, the rest of it recedes —
+          // drifting up a little and dimming — while the next one arrives. Scrubbed to the
           // scroll, so it plays backwards when you return. (No blur: blurring
           // large areas makes scrolling stutter.)
           gsap.utils.toArray<HTMLElement>("[data-exit]").forEach((el) => {
@@ -358,7 +261,7 @@ export default function Conductor() {
               el,
               { y: 0, opacity: 1 },
               {
-                y: () => -window.innerHeight * (hero ? 0.16 : 0.07),
+                y: () => -window.innerHeight * (hero ? 0.1 : 0.05),
                 opacity: hero ? 0.15 : 0.2,
                 ease: "none",
                 scrollTrigger: hero
@@ -378,6 +281,23 @@ export default function Conductor() {
 
     const refresh = () => ScrollTrigger.refresh();
     window.addEventListener("load", refresh);
+    // The chapter boundaries are measured, not computed, so any change in the
+    // page's height — a photo arriving, a recognition row opening on a tablet,
+    // a title split into letters — would leave every later note sounding at
+    // the wrong place. Re-measure whenever the page's height settles.
+    // Only a real change of height counts: the observer also reports on
+    // start, and refreshing for nothing restarts scroll-linked animations.
+    let settle = 0;
+    const main = document.querySelector("main");
+    let height = main?.offsetHeight ?? 0;
+    const resized = new ResizeObserver(() => {
+      const now = main?.offsetHeight ?? 0;
+      if (Math.abs(now - height) < 2) return;
+      height = now;
+      window.clearTimeout(settle);
+      settle = window.setTimeout(refresh, 250);
+    });
+    if (main) resized.observe(main);
     return () => {
       stopLenis();
       detach();
@@ -388,6 +308,8 @@ export default function Conductor() {
       window.removeEventListener("pointercancel", bowEnd);
       window.removeEventListener("blur", bowEnd);
       window.removeEventListener("load", refresh);
+      resized.disconnect();
+      window.clearTimeout(settle);
     };
   });
 

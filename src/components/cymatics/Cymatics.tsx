@@ -1,132 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { resonance, tuningAt, type Tuning } from "@/lib/resonance";
-import { soundLevel } from "@/lib/sound";
+import { resonance, tuningAt, type Tuning } from "@/lib/state/resonance";
+import { soundLevel } from "@/lib/audio/sound";
+import { compile, readColour, uniforms } from "./gl";
+import { QUALITY, startingQuality } from "./quality";
 import { DRAW_FS, DRAW_VS, QUAD_VS, SIM_FS } from "./shaders";
+import { sampleElements } from "./spell";
 
 const PLATE_SCALE = 0.82;
-
-function compile(gl: WebGL2RenderingContext, vs: string, fs: string) {
-  const prog = gl.createProgram()!;
-  for (const [type, src] of [
-    [gl.VERTEX_SHADER, vs],
-    [gl.FRAGMENT_SHADER, fs],
-  ] as const) {
-    const sh = gl.createShader(type)!;
-    gl.shaderSource(sh, src);
-    gl.compileShader(sh);
-    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
-      throw new Error(gl.getShaderInfoLog(sh) ?? "shader compile failed");
-    }
-    gl.attachShader(prog, sh);
-  }
-  gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-    throw new Error(gl.getProgramInfoLog(prog) ?? "program link failed");
-  }
-  return prog;
-}
-
-function uniforms(gl: WebGL2RenderingContext, prog: WebGLProgram, names: string[]) {
-  return Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(prog, n)]));
-}
-
-/** Reads a palette colour from the page so Design Lab previews recolour the sand. */
-function readColour(name: string, fallback: [number, number, number]): [number, number, number] {
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const hex = raw.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
-  if (hex) {
-    const h = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join("") : hex[1];
-    return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255) as [number, number, number];
-  }
-  const rgb = raw.match(/rgba?\(([\d.]+)[ ,]+([\d.]+)[ ,]+([\d.]+)/);
-  if (rgb) return [rgb[1], rgb[2], rgb[3]].map((v) => Number(v) / 255) as [number, number, number];
-  return fallback;
-}
-
-/**
- * Rasterise the hero's own words exactly where the page lays them out (same
- * face, size, spacing and position), and hand every grain a point in them.
- * While the preloader is up the type is laid out but invisible, so the sand
- * can stand in for it — and the real letters can later condense in its place.
- * Plate space: x in [-aspect, aspect], y in [-1, 1].
- */
-function sampleElements(selector: string, aspect: number, count: number) {
-  const out = new Float32Array(count * 4);
-  const els = Array.from(document.querySelectorAll<HTMLElement>(selector));
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const cw = 1400;
-  const k = cw / vw;
-  const ch = Math.max(1, Math.round(vh * k));
-  const c2 = document.createElement("canvas");
-  c2.width = cw;
-  c2.height = ch;
-  const ctx = c2.getContext("2d", { willReadFrequently: true });
-  if (!ctx || !els.length) return out;
-  ctx.fillStyle = "#fff";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-  els.forEach((el) => {
-    const r = el.getBoundingClientRect();
-    const cs = getComputedStyle(el);
-    // Spell what the page shows: CSS capitals included.
-    const raw = (el.textContent ?? "").trim();
-    const text =
-      cs.textTransform === "uppercase" ? raw.toUpperCase() : cs.textTransform === "lowercase" ? raw.toLowerCase() : raw;
-    if (!text || !r.width) return;
-    const size = parseFloat(cs.fontSize) * k;
-    ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${size}px ${cs.fontFamily}`;
-    if ("letterSpacing" in ctx) {
-      (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = `${parseFloat(cs.letterSpacing || "0") * k}px`;
-    }
-    // Work from the element's own (untransformed) box, turned about its centre
-    // by any CSS `rotate` — so a tilted signature is traced tilted.
-    const w = el.offsetWidth * k;
-    const h = el.offsetHeight * k;
-    const turn = cs.rotate && cs.rotate !== "none" ? (parseFloat(cs.rotate) * Math.PI) / 180 : 0;
-    // CSS centres the font's content box in the line box; find the baseline the same way.
-    const m = ctx.measureText(text);
-    const ascent = m.fontBoundingBoxAscent || size * 0.9;
-    const descent = m.fontBoundingBoxDescent || size * 0.25;
-    const baseline = -h / 2 + (h - (ascent + descent)) / 2 + ascent;
-    ctx.save();
-    ctx.translate((r.left + r.width / 2) * k, (r.top + r.height / 2) * k);
-    ctx.rotate(turn);
-    // Honour the element's text alignment inside its box.
-    const align = cs.textAlign;
-    if (align === "center") {
-      ctx.textAlign = "center";
-      ctx.fillText(text, 0, baseline);
-    } else if (align === "right" || align === "end") {
-      ctx.textAlign = "right";
-      ctx.fillText(text, w / 2, baseline);
-    } else {
-      ctx.textAlign = "left";
-      ctx.fillText(text, -w / 2, baseline);
-    }
-    ctx.restore();
-  });
-
-  const img = ctx.getImageData(0, 0, cw, ch).data;
-  const pts: number[] = [];
-  for (let y = 0; y < ch; y += 2) {
-    for (let x = 0; x < cw; x += 2) {
-      if (img[(y * cw + x) * 4 + 3] > 110) pts.push(((2 * x) / cw - 1) * aspect, 1 - (2 * y) / ch);
-    }
-  }
-  const n = pts.length / 2;
-  if (!n) return out;
-  // Every grain joins the letters: nothing is left to draw the pattern.
-  for (let i = 0; i < count; i++) {
-    const j = Math.floor(Math.random() * n);
-    out[i * 4] = pts[j * 2] + (Math.random() - 0.5) * 0.003;
-    out[i * 4 + 1] = pts[j * 2 + 1] + (Math.random() - 0.5) * 0.003;
-    out[i * 4 + 2] = 1;
-  }
-  return out;
-}
 
 /**
  * `tuning` pins the plate to one mode instead of following the scroll;
@@ -144,7 +26,14 @@ export default function Cymatics({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const gl = canvas.getContext("webgl2", { antialias: false, alpha: true, premultipliedAlpha: true });
+    const gl = canvas.getContext("webgl2", {
+      antialias: false,
+      alpha: true,
+      premultipliedAlpha: true,
+      depth: false,
+      stencil: false,
+      powerPreference: "default",
+    });
     if (!gl || !gl.getExtension("EXT_color_buffer_float")) {
       canvas.style.display = "none";
       return;
@@ -216,9 +105,18 @@ export default function Cymatics({
     if (spellFrom) void document.fonts.ready.then(() => requestAnimationFrame(spell));
     let respell = 0;
 
+    let level = startingQuality(gl);
+    let drawn = Math.round(count * QUALITY[level].grains);
+    const applyQuality = () => {
+      drawn = Math.round(count * QUALITY[level].grains);
+      // Lets the page lighten its own costs too (see globals.css).
+      document.documentElement.dataset.quality = level >= 3 ? "low" : level >= 1 ? "medium" : "high";
+    };
+    applyQuality();
+
     let dpr = 1;
     const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, QUALITY[level].dpr);
       canvas.width = Math.round(window.innerWidth * dpr);
       canvas.height = Math.round(window.innerHeight * dpr);
       aspect = window.innerWidth / window.innerHeight;
@@ -259,10 +157,55 @@ export default function Cymatics({
     let raf = 0;
     const start = performance.now();
 
+    // Watching the frame rate. Every 2 seconds of frames, take the typical
+    // (median) gap between them; only if two windows in a row are clearly
+    // slow — under ~40 fps — step down one level, then wait and see. One-off
+    // hitches (loading, a tab switch, splitting the titles) don't move the
+    // median, so a capable machine keeps the full plate. It never steps back
+    // up, so it can't flicker between levels.
+    const gaps: number[] = [];
+    let slowWindows = 0;
+    let watchFrom = start + 4000; // past the preloader's busiest moments
+    const watch = (now: number, gap: number) => {
+      if (now < watchFrom || level === QUALITY.length - 1) return;
+      gaps.push(gap);
+      if (gaps.length < 120) return;
+      gaps.sort((x, y) => x - y);
+      const median = gaps[gaps.length >> 1];
+      gaps.length = 0;
+      // At 30 fps every frame is meant to take ~33 ms.
+      const budget = QUALITY[level].fps === 30 ? 42 : 25;
+      slowWindows = median > budget ? slowWindows + 1 : 0;
+      if (slowWindows < 2) return;
+      slowWindows = 0;
+      level++;
+      applyQuality();
+      resize();
+      watchFrom = now + 3000;
+    };
+
+    let lost = false;
+    const onLost = (e: Event) => {
+      // The GPU dropped the context (a driver reset, too many tabs): stop
+      // drawing and hide the plate rather than throw on every frame.
+      e.preventDefault();
+      lost = true;
+      cancelAnimationFrame(raf);
+      canvas.style.display = "none";
+    };
+    canvas.addEventListener("webglcontextlost", onLost);
+
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
-      if (document.hidden) return;
-      const dt = Math.min((now - last) / 16.667, 3);
+      if (document.hidden || lost) {
+        last = now;
+        return;
+      }
+      const gap = now - last;
+      // 30 fps steps skip every other display frame.
+      if (QUALITY[level].fps === 30 && gap < 1000 / 30 - 4) return;
+      watch(now, gap);
+      const dt = Math.min(gap / 16.667, 3);
       last = now;
       frame++;
       if (frame % 45 === 1) {
@@ -340,7 +283,9 @@ export default function Cymatics({
       gl.uniform1f(uDraw.uAspect, aspect);
       gl.uniform1f(uDraw.uScale, PLATE_SCALE);
       // Grains grow with the screen above 1680px, like the rest of the layout.
-      gl.uniform1f(uDraw.uSize, 1.5 * dpr * Math.max(1, window.innerWidth / 1680));
+      // Fewer grains are drawn a little larger, so the pattern keeps its weight.
+      const sparse = 1 / Math.sqrt(QUALITY[level].grains);
+      gl.uniform1f(uDraw.uSize, 1.5 * dpr * Math.max(1, window.innerWidth / 1680) * Math.min(sparse, 1.4));
       gl.uniform1f(uDraw.uIntensity, intensity);
       gl.uniform3f(uDraw.uInk, ink[0], ink[1], ink[2]);
       gl.uniform3f(uDraw.uGlintInk, glint[0], glint[1], glint[2]);
@@ -354,13 +299,14 @@ export default function Cymatics({
       gl.uniform1f(uDraw.uForm, spellFrom ? resonance.form : 0);
       gl.uniform4f(uDraw.uRing, ring.x, ring.y, ring.r, resonance.hoverStrength);
       gl.activeTexture(gl.TEXTURE0);
-      gl.drawArrays(gl.POINTS, 0, count);
+      gl.drawArrays(gl.POINTS, 0, drawn);
     };
     raf = requestAnimationFrame(tick);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      canvas.removeEventListener("webglcontextlost", onLost);
       window.removeEventListener("pointermove", onPointer);
       window.removeEventListener("pointerdown", onPointer);
       alive = false;

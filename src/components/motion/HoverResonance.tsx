@@ -2,9 +2,9 @@
 
 import { useEffect } from "react";
 import { gsap } from "gsap";
-import { resonance } from "@/lib/resonance";
-import { hoverTone } from "@/lib/sound";
-import { isEntered } from "@/lib/stage";
+import { resonance } from "@/lib/state/resonance";
+import { hoverTone } from "@/lib/audio/sound";
+import { isEntered } from "@/lib/state/stage";
 
 const INTERACTIVE = "a, button, [data-hover]";
 

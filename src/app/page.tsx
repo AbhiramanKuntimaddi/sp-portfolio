@@ -1,11 +1,11 @@
 import Cymatics from "@/components/cymatics/Cymatics";
-import Conductor from "@/components/Conductor";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
-import HoverResonance from "@/components/HoverResonance";
-import ReadingVeil from "@/components/ReadingVeil";
-import Preloader from "@/components/Preloader";
-import SwaraRail from "@/components/SwaraRail";
+import Conductor from "@/components/motion/Conductor";
+import Footer from "@/components/frame/Footer";
+import Header from "@/components/frame/Header";
+import HoverResonance from "@/components/motion/HoverResonance";
+import ReadingVeil from "@/components/cymatics/ReadingVeil";
+import Preloader from "@/components/entry/Preloader";
+import SwaraRail from "@/components/frame/SwaraRail";
 import Hero from "@/components/sections/Hero";
 import Profile from "@/components/sections/Profile";
 import Journey from "@/components/sections/Journey";
@@ -21,7 +21,7 @@ export default function Home() {
       <Cymatics spellFrom="[data-sand]" />
       <ReadingVeil />
       <Preloader />
-      <div data-gated="chrome">
+      <div data-gated="frame">
         <Header />
         <SwaraRail />
       </div>

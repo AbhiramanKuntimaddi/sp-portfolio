@@ -20,6 +20,8 @@ export default function Honours() {
 
   const { contextSafe } = useGSAP({ scope });
 
+  // contextSafe only wraps these handlers; the refs are read when they run, not during render.
+  /* eslint-disable react-hooks/refs */
   const show = contextSafe((i: number | null) => {
     const el = floatRef.current;
     if (!el) return;
@@ -33,6 +35,7 @@ export default function Honours() {
     if (!el || e.pointerType !== "mouse") return;
     gsap.to(el, { x: e.clientX + 32, y: e.clientY - el.offsetHeight / 2, duration: 0.9, ease: "expo.out" });
   });
+  /* eslint-enable react-hooks/refs */
 
   return (
     <section id="honours" ref={scope} className="relative z-10 py-32 lg:py-48" onPointerMove={follow}>
@@ -42,16 +45,16 @@ export default function Honours() {
           Recognition
         </h2>
         <p className="mt-8 max-w-md text-muted" data-reveal>
-          Recognised on stage, trusted on the jury, invited onto the panel — and to the factory floor.
+          Awards, jury work and talks.
         </p>
 
-        <ul className="mt-20 lg:mt-24" onPointerLeave={() => show(null)}>
+        <ul className="mt-20 border-b border-line lg:mt-24" onPointerLeave={() => show(null)} data-strings>
           {honours.map((h, i) => {
             const isOpen = open === i;
             return (
               <li
                 key={h.title}
-                className="group border-t border-line last:border-b"
+                data-string
                 onPointerEnter={(e) => e.pointerType === "mouse" && show(h.img ? i : null)}
                 data-reveal
               >
@@ -73,7 +76,7 @@ export default function Honours() {
                         +
                       </span>
                     </span>
-                    <span className="block font-heading text-2xl leading-tight tracking-tight transition-[color,transform] duration-700 ease-out group-hover:translate-x-3 group-hover:text-accent sm:text-3xl lg:col-span-7 lg:text-[2.1rem]">
+                    <span data-string-title className="block font-heading text-2xl leading-tight tracking-tight sm:text-3xl lg:col-span-7 lg:text-[2.1rem]">
                       {h.title}
                     </span>
                     <span className="flex items-baseline justify-between gap-6 text-muted lg:col-span-3">
@@ -96,13 +99,13 @@ export default function Honours() {
                     style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
                   >
                     <div className="overflow-hidden">
-                      <div className="relative mb-9 aspect-[4/3] w-full overflow-hidden rounded-[2px] sm:aspect-[16/10]">
+                      <div className="relative mb-9 aspect-4/3 w-full overflow-hidden rounded-xs sm:aspect-16/10">
                         <Image
                           src={h.img}
                           alt={h.alt}
                           fill
                           sizes="100vw"
-                          className={`object-cover transition-[transform,opacity] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${isOpen ? "scale-100 opacity-100" : "scale-110 opacity-0"}`}
+                          className={`object-cover transition-[transform,opacity] duration-1400 ease-[cubic-bezier(0.22,1,0.36,1)] ${isOpen ? "scale-100 opacity-100" : "scale-110 opacity-0"}`}
                         />
                       </div>
                     </div>
@@ -117,11 +120,11 @@ export default function Honours() {
       <div
         ref={floatRef}
         aria-hidden="true"
-        className="pointer-events-none fixed left-0 top-0 z-30 hidden aspect-[3/4] w-[22vw] max-w-80 fine:block"
+        className="pointer-events-none fixed left-0 top-0 z-30 hidden aspect-3/4 w-[22vw] max-w-80 fine:block"
       >
         {honours.map((h) =>
           h.img ? (
-            <div key={h.title} className="invisible absolute inset-0 overflow-hidden rounded-[2px] opacity-0">
+            <div key={h.title} className="invisible absolute inset-0 overflow-hidden rounded-xs opacity-0">
               <Image src={h.img} alt="" fill sizes="22vw" className="object-cover" />
             </div>
           ) : (

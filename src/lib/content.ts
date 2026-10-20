@@ -8,7 +8,10 @@ export const SITE = {
   email: "hello@spandanapuppala.com",
   studioName: "SP Design Studio",
   studioUrl: "https://www.spdesignstudio.in",
-  credit: { name: "Abhiraman Kuntimaddi", url: "https://abhiramankuntimaddi.com" },
+  credit: {
+    name: "Abhiraman Kuntimaddi",
+    url: "https://abhiramankuntimaddi.com",
+  },
 };
 
 /*
@@ -36,36 +39,107 @@ export const SA_HZ = 220;
 const et = (step: number) => Math.pow(2, step / 12);
 
 export const SWARAS: Swara[] = [
-  { id: "top", name: "Sa", short: "S", label: "Spandana", step: 0, ratio: et(0), mode: [3, 5, -1], intensity: 0.95 },
-  { id: "profile", name: "Re", short: "R", label: "Profile", step: 2, ratio: et(2), mode: [2, 7, 1], intensity: 0.38 },
-  { id: "journey", name: "Ga", short: "G", label: "Journey", step: 4, ratio: et(4), mode: [4, 5, -1], intensity: 0.35 },
-  { id: "honours", name: "Ma", short: "M", label: "Honours", step: 5, ratio: et(5), mode: [3, 8, 1], intensity: 0.35 },
-  { id: "giving", name: "Pa", short: "P", label: "Giving back", step: 7, ratio: et(7), mode: [5, 7, -1], intensity: 0.4 },
-  { id: "music", name: "Dha", short: "D", label: "Music", step: 9, ratio: et(9), mode: [6, 7, 1], intensity: 0.95 },
-  { id: "next", name: "Ni", short: "N", label: "What’s next", step: 11, ratio: et(11), mode: [4, 9, -1], intensity: 0.42 },
-  { id: "contact", name: "Ṡa", short: "Ṡ", label: "Connect", step: 12, ratio: et(12), mode: [3, 5, 1], intensity: 0.75 },
+  {
+    id: "top",
+    name: "Sa",
+    short: "S",
+    label: "Spandana",
+    step: 0,
+    ratio: et(0),
+    mode: [3, 5, -1],
+    intensity: 0.95,
+  },
+  {
+    id: "profile",
+    name: "Re",
+    short: "R",
+    label: "Profile",
+    step: 2,
+    ratio: et(2),
+    mode: [2, 7, 1],
+    intensity: 0.38,
+  },
+  {
+    id: "journey",
+    name: "Ga",
+    short: "G",
+    label: "Journey",
+    step: 4,
+    ratio: et(4),
+    mode: [4, 5, -1],
+    intensity: 0.35,
+  },
+  {
+    id: "honours",
+    name: "Ma",
+    short: "M",
+    label: "Honours",
+    step: 5,
+    ratio: et(5),
+    mode: [3, 8, 1],
+    intensity: 0.35,
+  },
+  {
+    id: "giving",
+    name: "Pa",
+    short: "P",
+    label: "Giving back",
+    step: 7,
+    ratio: et(7),
+    mode: [5, 7, -1],
+    intensity: 0.4,
+  },
+  {
+    id: "music",
+    name: "Dha",
+    short: "D",
+    label: "Music",
+    step: 9,
+    ratio: et(9),
+    mode: [6, 7, 1],
+    intensity: 0.95,
+  },
+  {
+    id: "next",
+    name: "Ni",
+    short: "N",
+    label: "What's next",
+    step: 11,
+    ratio: et(11),
+    mode: [4, 9, -1],
+    intensity: 0.42,
+  },
+  {
+    id: "contact",
+    name: "Ṡa",
+    short: "Ṡ",
+    label: "Connect",
+    step: 12,
+    ratio: et(12),
+    mode: [3, 5, 1],
+    intensity: 0.75,
+  },
 ];
 
 export const hero = {
   first: "Spandana",
   last: "Puppala",
-  scripts: "స్పందన · स्पन्दन",
-  definition: "a throb, a pulse, a vibration.",
+  scripts: "స్పందన · स्पंदन",
+  definition: "a pulse or vibration. In Telugu, also a response.",
   roles: ["Interior Designer", "Carnatic Vocalist", "Entrepreneur", "Educator"],
-  tagline:
-    "Driven by a lifelong passion for crafting beautiful, soul-stirring spaces — and for the music that has shaped her just as deeply.",
+  tagline: "Interior designer and Carnatic vocalist, based in Hyderabad.",
 };
 
-// Copy between *asterisks* renders as the brass emphasis (components/Emphasis.tsx).
+// Copy between *asterisks* renders as the brass emphasis (components/ui/Emphasis.tsx).
 export const profile = {
   heading: ["Personal", "Profile"],
-  lead: "Spandana designs for *the way a space feels* — intuitive, human-centred rooms where every new idea has to earn its place in everyday life.",
+  lead: "Spandana is an interior designer in Hyderabad. She started SP Design Studio to bring good design and *everyday use* together.",
   body: [
-    "She trained in interior design at JNAFAU, learnt furniture and prototyping under Prof. Supradip Das at IIT Guwahati, and found her footing in workspace design at Liquid Space Studio. Then she started her own practice — one of the youngest entrepreneurs in her field.",
-    "The other half of her is music: a trained Carnatic vocalist and playback singer who teaches students across the world. And she keeps returning to JNAFAU, as a guest lecturer, for the designers coming up behind her.",
+    "She studied interior design at JNAFAU, Hyderabad. She learnt furniture design and origami prototyping from Prof. Supradip Das at IIT Guwahati, and worked on offices and corporate interiors at Liquid Space Studio.",
+    "She is also a trained Carnatic vocalist. She has sung playback for Telugu films, teaches music to 40 students, and gives guest lectures at JNAFAU.",
   ],
   quote: "I design for how people feel in a space, not just how it looks.",
-  studioLine: "Her studio’s interiors have a home of their own —",
+  studioLine: "Her studio's work has its own website:",
 };
 
 export const journey = [
@@ -73,38 +147,38 @@ export const journey = [
     when: "Education",
     title: "Bachelor of Interior Design",
     sub: "JNAFAU, Hyderabad · School of Planning & Architecture",
-    body: "Where she learnt to see space — at Jawaharlal Nehru Architecture & Fine Arts University.",
+    body: "Her degree, from Jawaharlal Nehru Architecture and Fine Arts University.",
   },
   {
     when: "Mentorship",
     title: "Furniture design & origami prototyping",
     sub: "Prof. Supradip Das · IIT Guwahati",
-    body: "Furniture design, and origami as a way of thinking with her hands — folding ideas into prototypes.",
+    body: "Furniture design, and using origami to build prototypes.",
   },
   {
     when: "Early career",
     title: "Liquid Space Studio",
     sub: "Under Ar. Nagaraju Mundrai",
-    body: "Her first studio: workspaces and corporate interiors — the experience that shaped her human-centred way of designing.",
+    body: "Her first job, working on offices and corporate interiors.",
   },
   {
-    when: "2023–24",
+    when: "2023-24",
     title: "Gold certifications",
     sub: "IIT Roorkee & SPA Delhi",
-    body: "Gold in Design Technology & Innovation, and in Building Materials & Composites.",
+    body: "Gold certificates in Design Technology and Innovation, and in Building Materials and Composites.",
   },
   {
     when: "2024",
     title: "The Architectural Imagination",
     sub: "HarvardX · Verified certificate",
-    body: "A verified course in reading architecture as a cultural, creative practice — study that never stopped.",
+    body: "A verified online course on architecture from HarvardX.",
   },
 ];
 
 export const honours = [
   {
     year: "2023",
-    title: "Telangana’s Rising Interior Designer of the Year",
+    title: "Telangana's Rising Interior Designer of the Year",
     by: "Presented by award-winning architect Ar. Ponni Concessao",
     img: "/img/award-stage.jpg",
     alt: "Spandana receiving the Rising Interior Designer of the Year award on stage",
@@ -118,7 +192,7 @@ export const honours = [
   },
   {
     year: "2025",
-    title: "Speaker & Panelist — Trailblazers of Tomorrow",
+    title: "Speaker and panelist, Trailblazers of Tomorrow",
     by: "APTA Katalyst",
     img: "/img/apta-panel.jpg",
     alt: "Spandana with fellow panelists at APTA Katalyst",
@@ -134,36 +208,39 @@ export const honours = [
 
 export const givingBack = [
   {
-    title: "Guest lecturer at JNAFAU",
-    body: "She returns to her alma mater to teach — and to show young designers what the path can look like.",
+    kicker: "Guest lecturer",
+    figure: "JNAFAU",
+    body: "She goes back to her old university to teach design students.",
   },
   {
-    title: "Women at work",
-    body: "One of the youngest entrepreneurs in her field, she makes a point of empowering and motivating women in professional workplaces.",
+    kicker: "Mentoring",
+    figure: "Women at work",
+    body: "She supports and encourages women in professional workplaces.",
   },
   {
-    title: "Teaching music",
-    body: "Forty young students, across the globe, learn Carnatic music from her.",
+    kicker: "Teaching",
+    figure: "40 + students",
+    body: "She teaches Carnatic music to students in different countries.",
   },
 ];
 
 export const music = {
-  eyebrow: "Beyond spatial design",
   heading: ["The other", "half is", "music."],
-  body: "Music is as much a part of Spandana as design. *A trained and certified Carnatic vocalist*, she has sung playback for Telugu cinema — and now passes the form on to a global class of young students.",
+  body: "Music is a big part of her life. She is *a trained and certified Carnatic vocalist*, has sung playback for Telugu films, and teaches students around the world.",
+  listen: "Listen while you scroll",
   facts: [
-    { value: "Carnatic", label: "Trained & certified vocalist" },
-    { value: "TFI", label: "Playback songs in Telugu cinema" },
-    { value: "40", label: "Students, across the globe" },
+    { value: "Carnatic", label: "Trained and certified vocalist" },
+    { value: "Playback", label: "Songs for Telugu films" },
+    { value: "40 +", label: "Music students" },
   ],
 };
 
 export const next = {
-  heading: ["What’s", "Next?"],
-  eyebrow: "Upcoming venture",
+  heading: ["What's", "Next?"],
+  eyebrow: "New venture",
   title: "Jaipuri Trunk",
   url: "https://jaipuritrunk.com",
   urlLabel: "jaipuritrunk.com",
-  launch: "Launching early December 2026",
-  body: "Her newest venture brings the same eye for craft, colour and material to what we wear: *Jaipuri Trunk*, a label for Jaipuri juttis and artisanal accessories.",
+  launch: "Launching in early December 2026",
+  body: "*Jaipuri Trunk* is her new label for Jaipuri juttis and handmade accessories.",
 };

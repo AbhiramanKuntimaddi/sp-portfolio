@@ -1,6 +1,32 @@
 import { SA_HZ, SWARAS } from "@/lib/content";
-import { resonance, soundChanged } from "@/lib/resonance";
-import { isEntered } from "@/lib/stage";
+import { resonance, soundChanged } from "@/lib/state/resonance";
+import { isEntered } from "@/lib/state/stage";
+import { gamaka as shapeGamaka, gamakaSpan, perform, scoop, type Performance } from "./expression";
+import {
+  mandolinPluck,
+  mandolinPhrase,
+  nadaswaramPhrase,
+  startSruti,
+  startTambura,
+  violinPhrase,
+  warmMandolin,
+  type Stage,
+} from "./instruments";
+import {
+  aksharas,
+  DRONE_NAMES,
+  INSTRUMENT_NAMES,
+  RAGAS,
+  rhythmFor,
+  TALAS,
+  type Gamaka,
+  type Raga,
+  type RagaNote,
+  type TalaName,
+} from "./ragas";
+import { PRELOAD_DRONE, PRELOAD_INSTRUMENT, PRELOAD_RAGA, PRELOAD_TALA, PRELOAD_TUNING } from "./preload";
+import { SITE_BACKGROUND, SITE_INSTRUMENT } from "./site";
+import { tune } from "./tuning";
 
 /*
  * The score. Two layers of strings, all synthesised in the browser:
@@ -155,44 +181,57 @@ const STRING_PITCHES = (() => {
  */
 function warmStrings(e: Engine) {
   const todo = STRING_PITCHES.filter((st) => !e.cache.has(st));
+  // The site's own instrument, if it isn't the guitar: its chapter swaras too.
+  const site = SWARAS.map((s) => s.step);
   const next = () => {
     const st = todo.shift();
-    if (st === undefined) return;
-    stringBuffer(e, st);
-    window.setTimeout(next, 16);
+    if (st !== undefined) stringBuffer(e, st);
+    const swara = st === undefined ? site.shift() : undefined;
+    if (swara !== undefined) {
+      if (SITE_INSTRUMENT === "veena") veenaBuffer(e, swara);
+      if (SITE_INSTRUMENT === "mandolin") warmMandolin(e.ctx, [{ st: swara }]);
+    }
+    if (st !== undefined || swara !== undefined) window.setTimeout(next, 16);
   };
   window.setTimeout(next, 16);
 }
 
+/** A chapter's swara as you scroll, on the site's instrument (./site.ts). */
 function pluck(e: Engine, index: number, at: number, velocity = 1) {
-  pluckStep(e, SWARAS[index].step, at, velocity, -0.12 + index * 0.035);
+  const st = SWARAS[index].step;
+  const pan = -0.12 + index * 0.035;
+  if (SITE_INSTRUMENT === "veena") veenaPluck(e, st, at, velocity, pan);
+  else if (SITE_INSTRUMENT === "mandolin") mandolinPluck(stage(e), st, at, velocity, pan);
+  else pluckStep(e, st, at, velocity, pan);
+}
+
+/** One veena note for the scroll: a single meetu, ringing long. */
+function veenaPluck(e: Engine, st: number, at: number, velocity: number, pan: number) {
+  const { ctx } = e;
+  const src = ctx.createBufferSource();
+  src.buffer = veenaBuffer(e, st);
+  src.detune.value = (Math.random() - 0.5) * 3;
+  const g = ctx.createGain();
+  g.gain.value = 0.5 * velocity;
+  const p = ctx.createStereoPanner();
+  p.pan.value = pan;
+  src.connect(g).connect(p).connect(e.plucks);
+  src.start(at);
+  window.setTimeout(() => {
+    resonance.pulse = Math.min(1, resonance.pulse + 0.6 * velocity);
+  }, Math.max(0, (at - ctx.currentTime) * 1000));
+}
+
+/**
+ * Carnatic ornament, on the string's playback rate, as a smooth curve (see
+ * ./expression.ts): from the previous swara when known (so the attack is in
+ * tune), otherwise from just below the note.
+ */
+function applyGamaka(rate: AudioParam, at: number, kind: Gamaka, fromRatio?: number, span = 0.62) {
+  shapeGamaka(rate, kind, at, span, 1, fromRatio ?? Math.pow(2, -120 / 1200));
 }
 
 /** Pluck any pitch (semitones from Sa, fractions allowed — the 404's wrong notes). */
-type Gamaka = "jaaru" | "kampita";
-
-/**
- * Carnatic ornament, on the string's playback rate:
- *  - jaaru: slide up into the note from just below;
- *  - kampita: the slide, then a gentle oscillation as the note settles.
- */
-function applyGamaka(rate: AudioParam, at: number, kind: Gamaka, fromRatio?: number, span = 0.62) {
-  const cents = (c: number) => Math.pow(2, c / 1200);
-  // Slide from the previous swara when known (so the attack is in tune),
-  // otherwise from just below the note.
-  const from = fromRatio ?? cents(-120);
-  const time = (frac: number) => at + span * frac;
-  rate.setValueAtTime(from, at);
-  rate.setValueAtTime(from, at + 0.035);
-  rate.exponentialRampToValueAtTime(1, time(0.35));
-  if (kind === "kampita") {
-    rate.linearRampToValueAtTime(cents(35), time(0.52));
-    rate.linearRampToValueAtTime(1, time(0.68));
-    rate.linearRampToValueAtTime(cents(22), time(0.84));
-    rate.linearRampToValueAtTime(1, time(1));
-  }
-}
-
 function pluckStep(
   e: Engine,
   step: number,
@@ -202,15 +241,20 @@ function pluckStep(
   gamaka?: Gamaka,
   slideFrom?: number,
   span?: number,
+  halo = true,
 ) {
   const { ctx } = e;
-  // The note, and a soft octave above it a breath later — a harp-like halo.
-  [
-    { st: step, gain: 0.55 * velocity, pan, delay: 0 },
-    { st: step + 12, gain: 0.14 * velocity, pan: 0.2, delay: 0.014 },
-  ].forEach((n) => {
+  // No two plucks quite alike: a cent or two either way (the same for the
+  // note and its halo, so they stay one string).
+  const detune = (Math.random() - 0.5) * 3;
+  // The note, and — for the site's scroll notes — a soft octave above it a
+  // breath later, a harp-like halo. A raga is played as one plain string.
+  const layers = [{ st: step, gain: 0.55 * velocity, pan, delay: 0 }];
+  if (halo) layers.push({ st: step + 12, gain: 0.14 * velocity, pan: 0.2, delay: 0.014 });
+  layers.forEach((n) => {
     const src = ctx.createBufferSource();
     src.buffer = stringBuffer(e, n.st);
+    src.detune.value = detune;
     const g = ctx.createGain();
     g.gain.value = n.gain;
     const p = ctx.createStereoPanner();
@@ -249,7 +293,11 @@ function bowedVoice(e: Engine, semitones: number, at: number, level: number, att
   return { oscs, gain };
 }
 
+/** The site's bowed chords, when the background includes them (./site.ts). */
+const SITE_STRINGS = SITE_BACKGROUND === "strings" || SITE_BACKGROUND.endsWith("AndStrings");
+
 function setChord(e: Engine, index: number, at: number) {
+  if (!SITE_STRINGS) return;
   setTones(e, index, CHORDS[index], at);
 }
 
@@ -303,31 +351,96 @@ function hall(ctx: AudioContext, seconds = 4.2) {
   return ir;
 }
 
-/* ---------- The 404: a scale that can't find home ---------- */
+/* ---------- The 404: one wrong note ---------- */
 
 /*
- * Sa Re Ga Ma Pa Dha Ni climb as usual — and the upper Sa never comes. The
- * last note lands a quarter-tone sharp, or slips back between Ni and Sa, and
- * hangs over a V7 that never resolves. A breath, and it tries again.
+ * Sa Re Ga Ma Pa Dha Ni Ṡa climb as usual — but on every pass one swara is
+ * off: picked at random, played 35–60 cents sharp or flat (close to a
+ * quarter-tone, so it's clearly that note, and clearly wrong). The scale
+ * stumbles on it, finishes over a V7 that never resolves, takes a breath and
+ * tries again — and a different note goes wrong. The page names each one as
+ * its pass begins (subscribeWrongNote), until "Return to Sa".
  */
 const LOST_CHORD_KEY = -1;
-const LOST_MISSES = [12.5, 11.5, 12.5, 11.75];
 const LOST_GAP = 0.36;
+const LOST_CLIMB = [0, 2, 4, 5, 7, 9, 11, 12];
+const LOST_STUMBLE = 0.32;
+const LOST_BREATH = 3.2;
+
+/** One pass of the climb, for pages that keep time with it in silence. */
+export const LOST_LOOP_SECONDS = LOST_CLIMB.length * LOST_GAP + LOST_STUMBLE + LOST_BREATH;
+
+export interface WrongNote {
+  /** Index into SWARAS (0 = Sa … 7 = upper Sa). */
+  index: number;
+  /** How far off, in cents: negative is flat. */
+  cents: number;
+}
+
+let wrong: WrongNote | null = null;
+const wrongListeners = new Set<() => void>();
+
+/** A new wrong note — never the same swara twice in a row. */
+function pickWrong(): WrongNote {
+  let index: number;
+  do index = Math.floor(Math.random() * LOST_CLIMB.length);
+  while (wrong && index === wrong.index);
+  const size = 35 + Math.round(Math.random() * 25);
+  return { index, cents: Math.random() < 0.5 ? -size : size };
+}
+
+function showWrong(note: WrongNote) {
+  wrong = note;
+  wrongListeners.forEach((cb) => cb());
+}
+
+/** The wrong note of the pass playing now (picked on first ask, in the browser). */
+export function wrongNote(): WrongNote {
+  wrong ??= pickWrong();
+  return wrong;
+}
+
+export function subscribeWrongNote(cb: () => void) {
+  wrongListeners.add(cb);
+  return () => {
+    wrongListeners.delete(cb);
+  };
+}
+
+/** Moves on to the next wrong note without sound (the page keeps the loop's time). */
+export function nextWrongNote() {
+  showWrong(pickWrong());
+}
 
 let mode: "site" | "lost" = "site";
 let lostTimer = 0;
 let lostNext = 0;
-let lostRound = 0;
+let lostPasses = 0;
+const lostShows = new Set<number>();
 
 function lostPhrase(e: Engine, at: number) {
-  const climb = [0, 2, 4, 5, 7, 9, 11];
-  climb.forEach((st, k) => pluckStep(e, st, at + k * LOST_GAP, 0.5 + k * 0.05, -0.2 + k * 0.06));
-  const miss = LOST_MISSES[lostRound % LOST_MISSES.length];
-  const land = at + climb.length * LOST_GAP + 0.3;
-  pluckStep(e, miss, land, 1, 0.25);
-  pluckStep(e, miss - 12, land + 0.02, 0.35, -0.1);
-  lostRound++;
-  return land + 3.4;
+  // The first pass plays the note already named on the page; each later one
+  // picks a new note, and the page names it as that pass begins.
+  const note = lostPasses++ === 0 ? wrongNote() : pickWrong();
+  if (note !== wrong) {
+    const id = window.setTimeout(() => {
+      lostShows.delete(id);
+      showWrong(note);
+    }, Math.max(0, (at - e.ctx.currentTime) * 1000));
+    lostShows.add(id);
+  }
+  const { index, cents } = note;
+  let t = at;
+  LOST_CLIMB.forEach((st, k) => {
+    const off = k === index;
+    const step = off ? st + cents / 100 : st;
+    // The wrong note is played a little firmer and held a little longer,
+    // as if the player heard it too.
+    pluckStep(e, step, t, (off ? 0.85 : 0.5) + k * 0.04, -0.2 + k * 0.06);
+    if (k === LOST_CLIMB.length - 1) pluckStep(e, step - 12, t + 0.02, 0.35, -0.1);
+    t += off ? LOST_GAP + LOST_STUMBLE : LOST_GAP;
+  });
+  return t + LOST_BREATH;
 }
 
 function scheduleLost() {
@@ -338,6 +451,7 @@ function scheduleLost() {
 
 function startLost(e: Engine, t: number) {
   setTones(e, LOST_CHORD_KEY, CHORDS[6], t);
+  lostPasses = 0;
   lostNext = t + 0.5;
   window.clearInterval(lostTimer);
   lostTimer = window.setInterval(scheduleLost, 200);
@@ -347,6 +461,8 @@ function startLost(e: Engine, t: number) {
 function stopLost() {
   window.clearInterval(lostTimer);
   lostTimer = 0;
+  lostShows.forEach((id) => window.clearTimeout(id));
+  lostShows.clear();
 }
 
 /** Which score plays: the site's octave, or the 404's lost scale. */
@@ -375,107 +491,88 @@ export function resolveHome() {
 
 /* ---------- The welcome: the raga ---------- */
 
-/*
- * The preloader opens with a raga, played the Carnatic way on the guitar
- * (or veena / venu, see PRELOAD_INSTRUMENT) over a pure Sa–Pa drone: the arohanam as
- * the plate tunes, the avarohanam as the plate is struck. Gamakas start from
- * the previous swara and slide into the new one (jaaru), Ga sways (kampita).
- * Sa = A.
- *
- * Which raga plays: set PRELOAD_RAGA below — whichever she prefers.
- */
-type RagaNote = { st: number; gamaka?: Gamaka };
-type Raga = {
-  /** As the modal names it. */
-  name: string;
-  /** Shown as "her favourite raga" in the modal. */
-  favourite: boolean;
-  arohanam: RagaNote[];
-  avarohanam: RagaNote[];
-};
-
-const RAGAS = {
-  /*
-   * Mohanam — pentatonic, no Ma and no Ni.
-   *   S R₂ G₃ P D₂ Ṡ  ·  Ṡ D₂ P G₃ R₂ S   (A B C♯ E F♯ A)
-   */
-  mohanam: {
-    name: "Mohanam",
-    favourite: false,
-    arohanam: [{ st: 0 }, { st: 2 }, { st: 4, gamaka: "kampita" }, { st: 7 }, { st: 9, gamaka: "jaaru" }, { st: 12 }],
-    avarohanam: [{ st: 12 }, { st: 9, gamaka: "jaaru" }, { st: 7 }, { st: 4, gamaka: "kampita" }, { st: 2 }, { st: 0 }],
-  },
-  /*
-   * Yaman Kalyani (Yamunakalyani) — her favourite. The raised Ma (M₂ = D♯),
-   * the turns back through Ga and Dha on the way up, and Shuddha Ma (M₁ = D)
-   * as the anya swara on the way down.
-   *   S R₂ G₃ P M₂ G₃ P D₂ N₃ D₂ Ṡ
-   *   Ṡ N₃ D₂ P M₂ G₃ M₁ R₂ S
-   * Gamakas slide from the previous swara: M₂ down from Pa, Ga back from M₂,
-   * Dha into and back from Ni; Ga sways (kampita).
-   */
-  yamankalyani: {
-    name: "Yaman Kalyani",
-    favourite: true,
-    arohanam: [
-      { st: 0 },
-      { st: 2 },
-      { st: 4, gamaka: "kampita" },
-      { st: 7 },
-      { st: 6, gamaka: "jaaru" },
-      { st: 4, gamaka: "jaaru" },
-      { st: 7 },
-      { st: 9, gamaka: "jaaru" },
-      { st: 11 },
-      { st: 9, gamaka: "jaaru" },
-      { st: 12 },
-    ],
-    avarohanam: [
-      { st: 12 },
-      { st: 11 },
-      { st: 9, gamaka: "jaaru" },
-      { st: 7 },
-      { st: 6, gamaka: "jaaru" },
-      { st: 4, gamaka: "kampita" },
-      { st: 5 },
-      { st: 2 },
-      { st: 0 },
-    ],
-  },
-} satisfies Record<string, Raga>;
-
-/* ===== Preloader music: the two switches ===== */
-
-/** Which raga opens the site: "mohanam" or "yamankalyani". */
-const PRELOAD_RAGA: keyof typeof RAGAS = "yamankalyani";
-
-/**
- * Which instrument plays it: "guitar", "veena" or "venu" (flute) — or "none"
- * for a silent preloader (the site's own music then starts as the plate is
- * struck). Nothing else needs changing.
- */
-const PRELOAD_INSTRUMENT = "none" as "guitar" | "veena" | "venu" | "none";
-
-/* ============================================= */
-
+// The ragas live in ./ragas.ts; which one plays, and how, in ./preload.ts.
 const RAGA: Raga = RAGAS[PRELOAD_RAGA];
+/** The tala it's counted in: the switch, or the raga's own. */
+const TALA: TalaName = PRELOAD_TALA === "own" ? RAGA.tala : PRELOAD_TALA;
+const RHYTHM = rhythmFor(RAGA, TALA);
 
-/** For the modal: whether a raga plays, its name, and whether it's her favourite. */
+/** For the modal: whether a raga plays, and what — the raga, its tala, the instrument. */
 export const PRELOAD_RAGA_INFO = {
   playing: PRELOAD_INSTRUMENT !== "none",
-  name: RAGA.name,
-  favourite: RAGA.favourite,
+  raga: RAGA.name,
+  tala: TALAS[TALA].name,
+  instrument: PRELOAD_INSTRUMENT === "none" ? "" : INSTRUMENT_NAMES[PRELOAD_INSTRUMENT],
+  drone: PRELOAD_DRONE === "none" ? "" : DRONE_NAMES[PRELOAD_DRONE],
 };
+/** The phrases as played: each swara at its pitch in the chosen tuning. */
+const tuned = (notes: RagaNote[]) => notes.map((n) => ({ ...n, st: tune(n.st, PRELOAD_TUNING) }));
+const UP = tuned(RAGA.arohanam);
+const DOWN = tuned(RAGA.avarohanam);
 
-/** Sa and Pa only, on the bowed strings, under the raga. */
-const RAGA_DRONE = [-12, -5, 0, 7];
-const RAGA_DRONE_KEY = -2;
-/** Note spacing: longer phrases move a little quicker, so neither drags. */
-const RAGA_UP = Math.min(0.42, 3.2 / (RAGA.arohanam.length - 1));
-const RAGA_DOWN = Math.min(0.34, 2.5 / (RAGA.avarohanam.length - 1));
 
-/** How long the ascent takes, so the preloader can wait for it to reach Ṡa. */
-export const AROHANAM_SECONDS = PRELOAD_INSTRUMENT === "none" ? 0 : (RAGA.arohanam.length - 1) * RAGA_UP + 0.9;
+/**
+ * The drone's other note: Pa, as a tambura is usually tuned — or Ma when the
+ * raga has no Pa (Abhogi, Hindolam), so the drone never sounds a swara the
+ * raga leaves out.
+ */
+const HAS = new Set([...RAGA.arohanam, ...RAGA.avarohanam].map((n) => ((n.st % 12) + 12) % 12));
+const FIFTH = HAS.has(7) || !HAS.has(5) ? 7 : 5;
+/** Which drone is sounding now, as "kind:fifth", and how to stop it. */
+let drone: { key: string; stop: (at: number) => void } | null = null;
+
+/**
+ * Start a drone (replacing any other) on Sa and Pa (fifth = 7) or Ma (5).
+ * The tambura's four strings, in plucking order: Pa or Ma below, Sa, Sa, Sa
+ * below. The sruti box's reeds: Sa below, Pa or Ma, Sa.
+ */
+function startDrone(e: Engine, at: number, kind: "tambura" | "sruti" | "none", fifth: number) {
+  drone?.stop(at);
+  drone = null;
+  if (kind === "none") return;
+  const pitches = (kind === "tambura" ? [fifth - 12, 0, 0, -12] : [-12, fifth - 12, 0]).map((st) => tune(st, PRELOAD_TUNING));
+  const voice = kind === "tambura" ? startTambura(stage(e), pitches, at) : startSruti(stage(e), pitches, at);
+  drone = { key: `${kind}:${fifth}`, stop: voice.stop };
+}
+
+/** The site's own drone (./site.ts), always on Sa and Pa — the scale has both. */
+const SITE_DRONE = SITE_BACKGROUND.startsWith("tambura") ? "tambura" : SITE_BACKGROUND.startsWith("sruti") ? "sruti" : "none";
+
+/** Make sure the site's background is sounding (after the welcome, or when sound is turned back on). */
+function siteBackground(e: Engine, at: number) {
+  if (SITE_DRONE !== "none" && drone?.key !== `${SITE_DRONE}:7`) startDrone(e, at, SITE_DRONE, 7);
+  if (SITE_DRONE === "none" && drone) {
+    drone.stop(at);
+    drone = null;
+  }
+  window.setTimeout(() => {
+    if (engine === e && resonance.audible && !e.chord) setChord(e, current, e.ctx.currentTime + LOOKAHEAD);
+  }, Math.max(0, (at - e.ctx.currentTime) * 1000));
+}
+
+/**
+ * As the welcome raga ends, hand over to the site's background: the same
+ * drone simply carries on; a different one (or none) takes its place.
+ */
+const handOver = siteBackground;
+// A rhythm that doesn't match its phrase, or doesn't fill its cycle, would
+// drift off the tala: say so while editing ragas.ts.
+if (process.env.NODE_ENV === "development") {
+  for (const [name, raga] of Object.entries(RAGAS) as [string, Raga][]) {
+    for (const tala of Object.keys(TALAS) as TalaName[]) {
+      for (const phrase of ["arohanam", "avarohanam"] as const) {
+        const beats = rhythmFor(raga, tala)[phrase];
+        const total = beats.reduce((sum, b) => sum + b, 0);
+        const where = `[ragas] ${name}, ${tala}, ${phrase}:`;
+        if (beats.length !== raga[phrase].length) console.warn(`${where} ${beats.length} beats for ${raga[phrase].length} swaras`);
+        if (Math.abs(total - aksharas(tala)) > 1e-6) console.warn(`${where} ${total} aksharas, the cycle has ${aksharas(tala)}`);
+      }
+    }
+  }
+}
+
+/** How long the arohana's cycle takes: the plate is struck on the next samam. */
+export const AROHANAM_SECONDS = PRELOAD_INSTRUMENT === "none" ? 0 : aksharas(TALA) * RAGA.beat;
 
 /** Scroll notes wait until this audio time, so they don't clash with the raga. */
 let phraseUntil = 0;
@@ -502,7 +599,8 @@ function noiseBuffer(ctx: AudioContext) {
  * vibrato that blooms on held notes; into the hall.
  * `times[k]` is when note k begins; the voice ends at `end`.
  */
-function venuPhrase(e: Engine, notes: RagaNote[], times: number[], end: number, level = 0.16) {
+function venuPhrase(e: Engine, notes: RagaNote[], perf: Performance, end: number, level = 0.16) {
+  const { times } = perf;
   const { ctx } = e;
   const f = (st: number) => hz(st + FLUTE_OCTAVE);
   const start = times[0];
@@ -522,7 +620,8 @@ function venuPhrase(e: Engine, notes: RagaNote[], times: number[], end: number, 
 
   // Pitch: one frequency the partials follow.
   const pitch = ctx.createConstantSource();
-  pitch.offset.setValueAtTime(f(notes[0].st), start);
+  // Set just before the first note, so its own curve has the moment to itself.
+  pitch.offset.setValueAtTime(f(notes[0].st), start - 0.01);
   const vibrato = ctx.createOscillator();
   vibrato.frequency.value = 5.2;
   const vibratoDepth = ctx.createGain();
@@ -566,30 +665,20 @@ function venuPhrase(e: Engine, notes: RagaNote[], times: number[], end: number, 
     const t = times[k];
     const target = f(st);
     const next = k < notes.length - 1 ? times[k + 1] : end;
+    // Breath follows the phrasing: firmer notes blow a little harder.
+    const breathLevel = level * (0.8 + 0.3 * perf.force[k]);
     if (k > 0) {
       // A light articulation between notes, as a flautist's finger change.
-      voice.gain.setValueAtTime(level, t - 0.03);
-      voice.gain.linearRampToValueAtTime(level * 0.78, t);
-      voice.gain.linearRampToValueAtTime(level, t + 0.08);
+      voice.gain.setValueAtTime(breathLevel, t - 0.03);
+      voice.gain.linearRampToValueAtTime(breathLevel * 0.78, t);
+      voice.gain.linearRampToValueAtTime(breathLevel, t + 0.08);
     }
-    if (gamaka) {
-      // Every ornament fits inside its own note, ending before the next begins
-      // (overlapping pitch moves would fight and jump).
-      const span = Math.max(0.2, Math.min(0.64, next - t - 0.05));
-      const at = (frac: number) => t + span * frac;
-      // Jaaru: slide up into the note from about a semitone below.
-      pitch.offset.setValueAtTime(cents(target, -110), t);
-      pitch.offset.exponentialRampToValueAtTime(target, at(0.25));
-      if (gamaka === "kampita") {
-        pitch.offset.linearRampToValueAtTime(cents(target, 38), at(0.43));
-        pitch.offset.linearRampToValueAtTime(target, at(0.61));
-        pitch.offset.linearRampToValueAtTime(cents(target, 24), at(0.8));
-        pitch.offset.linearRampToValueAtTime(target, at(1));
-      }
-    } else {
-      // Legato: glide quickly onto the note.
-      pitch.offset.setTargetAtTime(target, t, 0.025);
-    }
+    // Every ornament fits inside its own note (overlapping pitch moves would
+    // fight and jump); a plain note gets a small scoop instead.
+    const prev = k > 0 ? f(notes[k - 1].st) : null;
+    const span = gamaka ? gamakaSpan(t, next) : null;
+    if (gamaka && span) shapeGamaka(pitch.offset, gamaka, t, span, target, prev ?? cents(target, -110));
+    else scoop(pitch.offset, t, target, prev, next - t);
     breathBand.frequency.setTargetAtTime(target * 2.2, t, 0.05);
     // Vibrato blooms only on notes held long enough to sing.
     vibratoDepth.gain.setValueAtTime(0, t);
@@ -611,18 +700,29 @@ function venuPhrase(e: Engine, notes: RagaNote[], times: number[], end: number, 
 
 
 /**
- * The raga on the site's own plucked guitar (warm, with its soft octave halo,
- * notes ringing into each other like a harp). Gamakas bend the ringing string,
+ * The raga on the site's own plucked guitar: one warm string, notes ringing
+ * into each other, without the octave halo the scroll notes have (with a
+ * gamaka bending both, it sounded like two players). Gamakas bend the ringing string,
  * sliding from the previous swara so every attack is in tune.
  */
-function guitarPhrase(e: Engine, notes: RagaNote[], times: number[], level = 0.85) {
+function guitarPhrase(e: Engine, notes: RagaNote[], perf: Performance, level = 0.85) {
   const n = notes.length - 1;
   notes.forEach(({ st, gamaka }, k) => {
-    const t = times[k];
-    const next = k < n ? times[k + 1] : t + 1.6;
-    const span = Math.max(0.2, Math.min(0.62, next - t - 0.05));
+    const t = perf.times[k];
+    const next = k < n ? perf.times[k + 1] : t + 1.6;
+    const span = gamaka ? gamakaSpan(t, next) : null;
     const rise = k / Math.max(1, n);
-    pluckStep(e, st, t, level * (0.6 + rise * 0.4), -0.3 + rise * 0.5, gamaka, k > 0 ? notes[k - 1].st : undefined, span);
+    pluckStep(
+      e,
+      st,
+      t,
+      level * perf.force[k],
+      -0.15 + rise * 0.3,
+      span ? gamaka : undefined,
+      k > 0 ? notes[k - 1].st : undefined,
+      span ?? undefined,
+      false,
+    );
   });
 }
 
@@ -699,7 +799,8 @@ function veenaBuffer(e: Engine, st: number) {
  * swara and slides into the new one, so every attack is in tune; a kampita
  * then sways gently above the note.
  */
-function veenaPhrase(e: Engine, notes: RagaNote[], times: number[], level = 0.75) {
+function veenaPhrase(e: Engine, notes: RagaNote[], perf: Performance, level = 0.75) {
+  const { times } = perf;
   const { ctx } = e;
   // The body: a warm low resonance and the hollow mid of the kudam.
   const body = ctx.createBiquadFilter();
@@ -720,23 +821,16 @@ function veenaPhrase(e: Engine, notes: RagaNote[], times: number[], level = 0.75
     const src = ctx.createBufferSource();
     src.buffer = veenaBuffer(e, st);
     const g = ctx.createGain();
-    const v = level * (0.75 + 0.25 * (k / Math.max(1, notes.length - 1)));
+    const v = level * perf.force[k];
+    src.detune.value = (Math.random() - 0.5) * 3;
     g.gain.setValueAtTime(v, t);
     // A new pluck damps the last one, as the finger moves on.
     if (k < notes.length - 1) g.gain.setTargetAtTime(0, next + 0.02, 0.08);
-    const span = Math.max(0.2, Math.min(0.62, next - t - 0.05));
-    if (gamaka && k > 0) {
-      const ratio = Math.pow(2, (notes[k - 1].st - st) / 12);
-      src.playbackRate.setValueAtTime(ratio, t);
-      src.playbackRate.setValueAtTime(ratio, t + 0.04);
-      src.playbackRate.exponentialRampToValueAtTime(1, t + span * 0.4);
-      if (gamaka === "kampita") {
-        const up = Math.pow(2, 45 / 1200);
-        src.playbackRate.linearRampToValueAtTime(up, t + span * 0.6);
-        src.playbackRate.linearRampToValueAtTime(1, t + span * 0.75);
-        src.playbackRate.linearRampToValueAtTime(up, t + span * 0.9);
-        src.playbackRate.linearRampToValueAtTime(1, t + span);
-      }
+    const span = gamaka ? gamakaSpan(t, next) : null;
+    if (gamaka && span) {
+      // The finger pulls the ringing string from the previous swara.
+      const from = k > 0 ? Math.pow(2, (notes[k - 1].st - st) / 12) : null;
+      shapeGamaka(src.playbackRate, gamaka, t, span, 1, from);
     }
     src.connect(g).connect(body);
     src.start(t);
@@ -747,36 +841,70 @@ function veenaPhrase(e: Engine, notes: RagaNote[], times: number[], level = 0.75
   });
 }
 
+/** Where the newer instruments (./instruments.ts) play: the master bus and the hall. */
+function stage(e: Engine): Stage {
+  return {
+    ctx: e.ctx,
+    out: e.master,
+    room: e.room,
+    onNote: (at, strength) =>
+      window.setTimeout(() => {
+        resonance.pulse = Math.min(1, resonance.pulse + strength);
+      }, Math.max(0, (at - e.ctx.currentTime) * 1000)),
+  };
+}
+
+/** One phrase on the chosen instrument; `end` is when a sustained voice stops. */
+function playPhrase(e: Engine, notes: RagaNote[], perf: Performance, end: number, descending: boolean) {
+  switch (PRELOAD_INSTRUMENT) {
+    case "guitar":
+      return guitarPhrase(e, notes, perf, descending ? 0.9 : 0.85);
+    case "veena":
+      return veenaPhrase(e, notes, perf, descending ? 0.8 : 0.75);
+    case "venu":
+      return venuPhrase(e, notes, perf, end, descending ? 0.16 : 0.15);
+    case "mandolin":
+      return mandolinPhrase(stage(e), notes, perf);
+    case "violin":
+      return violinPhrase(stage(e), notes, perf, end);
+    case "nadaswaram":
+      return nadaswaramPhrase(stage(e), notes, perf, end);
+  }
+}
+
+/** The phrase as a person would play it: the tala's pulse, breathing (see ./expression.ts). */
+const shape = (beats: number[], at: number, rising: boolean) => perform(beats, RAGA.beat, at, TALAS[TALA].angas, rising);
+
 function playArohanam(e: Engine, at: number) {
-  const n = RAGA.arohanam.length;
-  const times = RAGA.arohanam.map((_, k) => at + k * RAGA_UP);
+  const perf = shape(RHYTHM.arohanam, at, true);
   // Breathe on the upper Sa before the plate is struck.
-  const end = times[n - 1] + 1.1;
-  if (PRELOAD_INSTRUMENT === "guitar") guitarPhrase(e, RAGA.arohanam, times);
-  else if (PRELOAD_INSTRUMENT === "veena") veenaPhrase(e, RAGA.arohanam, times);
-  else venuPhrase(e, RAGA.arohanam, times, end, 0.15);
+  const end = perf.times[UP.length - 1] + 1.1;
+  playPhrase(e, UP, perf, end, false);
   phraseUntil = Math.max(phraseUntil, end);
 }
 
 function playAvarohanam(e: Engine, at: number) {
-  const n = RAGA.avarohanam.length;
-  // The last Sa arrives a touch late and is held, then let go.
-  const times = RAGA.avarohanam.map((_, k) => at + k * RAGA_DOWN + (k === n - 1 ? 0.12 : 0));
-  const end = times[n - 1] + 1.8;
-  if (PRELOAD_INSTRUMENT === "guitar") guitarPhrase(e, RAGA.avarohanam, times, 0.9);
-  else if (PRELOAD_INSTRUMENT === "veena") veenaPhrase(e, RAGA.avarohanam, times, 0.8);
-  else venuPhrase(e, RAGA.avarohanam, times, end, 0.16);
+  // Sa lands on its beat, is held, then let go.
+  const perf = shape(RHYTHM.avarohanam, at, false);
+  const end = perf.times[DOWN.length - 1] + 1.8;
+  playPhrase(e, DOWN, perf, end, true);
   phraseUntil = end;
+  handOver(e, end - 0.6);
 }
 
-/** The plate is struck and she enters: Mohanam's descent home, if sound is playing. */
+/** The plate is struck and she enters: the raga's descent home, if sound is playing. */
+/** The plate was struck before the audio had woken: play its note once it has. */
+let homecomingMissed = false;
+
 export function playHomecoming() {
   const e = engine;
-  if (!e || !resonance.audible) return;
+  if (!e || !resonance.audible) {
+    homecomingMissed = resonance.soundOn;
+    return;
+  }
   const t = e.ctx.currentTime + LOOKAHEAD;
-  // A silent preloader: the site's own music simply begins here.
+  // A silent preloader: the background is already sounding; strike the note.
   if (PRELOAD_INSTRUMENT === "none") {
-    setChord(e, current, t);
     pluck(e, current, t + 0.1, 0.8);
     return;
   }
@@ -869,19 +997,28 @@ async function begin({ intro = false }: { intro?: boolean } = {}) {
     // From the preloader: the ascent over a Sa–Pa drone, while the plate
     // tunes. Otherwise this chapter's chord and note.
     if (intro && current === 0) {
-      // Silent preloader: nothing until the plate is struck (playHomecoming).
+      // Silent preloader: no raga, so the site's own music starts now —
+      // nothing waits on the plate being struck, which may already have
+      // happened if the audio took a moment to wake (Bluetooth headphones,
+      // a sleeping device).
       if (PRELOAD_INSTRUMENT === "none") {
         resonance.audible = true;
         soundChanged();
+        siteBackground(e, t);
+        if (homecomingMissed) pluck(e, current, t + 0.1, 0.8);
+        homecomingMissed = false;
         return;
       }
-      setTones(e, RAGA_DRONE_KEY, RAGA_DRONE, t);
-      const ragaPitches = new Set([...RAGA.arohanam, ...RAGA.avarohanam].map((n) => n.st));
+      // Under the raga, the drone (PRELOAD_DRONE): a tambura or a sruti box.
+      startDrone(e, t, PRELOAD_DRONE, FIFTH);
+      // Render the plucked instruments' strings now, so the first notes start on time.
+      const ragaPitches = new Set([...UP, ...DOWN].map((n) => n.st));
       if (PRELOAD_INSTRUMENT === "veena") ragaPitches.forEach((st) => veenaBuffer(e, st));
       if (PRELOAD_INSTRUMENT === "guitar") ragaPitches.forEach((st) => stringBuffer(e, st));
+      if (PRELOAD_INSTRUMENT === "mandolin") warmMandolin(e.ctx, [...UP, ...DOWN]);
       playArohanam(e, t + 0.2);
     } else {
-      setChord(e, current, t);
+      siteBackground(e, t);
       pluck(e, current, t + 0.25, 0.8);
     }
   }
@@ -892,6 +1029,8 @@ async function begin({ intro = false }: { intro?: boolean } = {}) {
 function hush() {
   const e = engine;
   stopLost();
+  drone?.stop(e ? e.ctx.currentTime : 0);
+  drone = null;
   resonance.audible = false;
   soundChanged();
   if (!e) return;
@@ -982,6 +1121,12 @@ export function arrive(index: number) {
   const from = current;
   current = index;
   const e = engine;
+  // Sound is on but never got going (the start was interrupted): scrolling
+  // starts it — the audio was already unlocked by the click to enter.
+  if (e && resonance.soundOn && !resonance.audible && e.ctx.state === "running" && isEntered()) {
+    void begin();
+    return;
+  }
   if (!e || !resonance.audible || from === index) return;
   const dir = index > from ? 1 : -1;
   let steps: number[] = [];

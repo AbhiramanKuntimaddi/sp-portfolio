@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { SA_HZ, SITE } from "@/lib/content";
-import { isEntered, markEntered } from "@/lib/stage";
-import { withLenis } from "@/lib/smoothScroll";
-import { resonance } from "@/lib/resonance";
-import { AROHANAM_SECONDS, PRELOAD_RAGA_INFO, playHomecoming, setSoundOn } from "@/lib/sound";
+import { isEntered, markEntered } from "@/lib/state/stage";
+import { withLenis } from "@/lib/scroll";
+import { resonance } from "@/lib/state/resonance";
+import EnterModal from "@/components/entry/EnterModal";
+import { AROHANAM_SECONDS, PRELOAD_RAGA_INFO, playHomecoming, setSoundOn } from "@/lib/audio/sound";
 
 const MIN_MS = 1800;
 const MAX_MS = 7000;
@@ -17,7 +18,7 @@ const MAX_MS = 7000;
  * and the preloader itself can play:
  *  1. A small modal opens at once; behind it the sand starts gathering into
  *     her name and the page loads.
- *  2. "Enter with sound": the arohanam of the raga (lib/sound.ts) climbs while the plate
+ *  2. "Enter with sound": the arohanam of the raga (lib/audio/ragas.ts) climbs while the plate
  *     tunes — the readout reaches 220 Hz as the ascent reaches the upper Sa.
  *     "Enter in silence" (or Escape) tunes without it.
  *  3. Tuned, the plate is struck: the name bursts back into sand, the real
@@ -102,8 +103,7 @@ export default function Preloader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // No `disabled` on these buttons: Firefox/Zen restores it across reloads and
-  // breaks hydration. The guard below covers double clicks.
+  // Guards double clicks (the buttons can't use `disabled`, see EnterModal).
   const choose = (withSound: boolean) => {
     if (choice !== null) return;
     setChoice(withSound);
@@ -191,59 +191,26 @@ export default function Preloader() {
         </span>
       </div>
 
-      {/* Once tuned: the question, as a small modal over the name in sand. */}
-      <div
-        data-pre="scrim"
-        className="invisible fixed inset-0 z-10 flex items-center justify-center bg-background/45 px-gutter opacity-0"
-      >
-        <div
-          data-pre="modal"
-          data-no-halo
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="experience-title"
-          aria-describedby="experience-note"
-          data-sound-toggle
-          onKeyDown={(e) => {
-            if (e.key === "Escape") choose(false);
-          }}
-          className="w-full max-w-md rounded-xs border border-line bg-background/90 p-8 backdrop-blur-md sm:p-10"
-        >
-          <p className="label text-accent">An experience</p>
-          <h2 id="experience-title" className="headline mt-4 text-5xl sm:text-6xl">
-            Best with sound
-          </h2>
-          <p id="experience-note" className="mt-5 leading-relaxed text-muted">
-            Strings play as you move through her story
-            {PRELOAD_RAGA_INFO.playing ? (
-              <>
-                {" "}— it opens with {PRELOAD_RAGA_INFO.favourite ? "her favourite raga" : "raga"} {PRELOAD_RAGA_INFO.name}.
-              </>
-            ) : (
-              "."
-            )}
-          </p>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
-            <button
-              ref={beginRef}
-              type="button"
-              data-sound-toggle
-              onClick={() => choose(true)}
-              className="rounded-xs bg-accent px-5 py-3 font-semibold tracking-tight text-background transition-opacity hover:opacity-90"
-            >
-              Enter with sound
-            </button>
-            <button
-              type="button"
-              data-sound-toggle
-              onClick={() => choose(false)}
-              className="label py-3 text-muted transition-colors hover:text-foreground"
-            >
-              <span className="ulink">Enter in silence</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* The question, as a small modal over the name in sand. */}
+      <EnterModal
+        beginRef={beginRef}
+        onChoose={choose}
+        note={
+          PRELOAD_RAGA_INFO.playing
+            ? "Music plays as you scroll through the site. It opens with a raga."
+            : "Music plays as you scroll through the site."
+        }
+        details={
+          PRELOAD_RAGA_INFO.playing
+            ? [
+                { label: "Raga", value: PRELOAD_RAGA_INFO.raga },
+                { label: "Tala", value: PRELOAD_RAGA_INFO.tala },
+                { label: "Instrument", value: PRELOAD_RAGA_INFO.instrument },
+                ...(PRELOAD_RAGA_INFO.drone ? [{ label: "Drone", value: PRELOAD_RAGA_INFO.drone }] : []),
+              ]
+            : undefined
+        }
+      />
     </div>
   );
 }

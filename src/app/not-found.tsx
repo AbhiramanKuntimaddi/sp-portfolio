@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Cymatics from "@/components/cymatics/Cymatics";
-import ReadingVeil from "@/components/ReadingVeil";
-import { SoundToggle } from "@/components/Header";
-import { LostTune, ReturnToSa } from "@/components/LostTune";
+import ReadingVeil from "@/components/cymatics/ReadingVeil";
+import SoundToggle from "@/components/frame/SoundToggle";
+import { LostTune, ReturnToSa, WrongNoteLine } from "@/components/not-found/LostTune";
 import { SITE } from "@/lib/content";
 
 export const metadata: Metadata = {
@@ -12,8 +12,9 @@ export const metadata: Metadata = {
 
 /*
  * 404 — a note that isn't in the octave. The plate is tuned between modes,
- * so the sand never quite finds its lines, and the strings climb Sa to Ni
- * but never land on the upper Sa — until you choose to return.
+ * so the sand never quite finds its lines, and the strings climb the scale
+ * with one swara out of tune, a different one each visit — until you choose
+ * to return.
  */
 const OFF_SCALE = { name: "—", hz: 404, n: 4.37, m: 6.13, sign: 0.41, intensity: 0.75 };
 
@@ -22,8 +23,12 @@ export default function NotFound() {
     <>
       <Cymatics tuning={OFF_SCALE} restless={0.9} />
       <ReadingVeil />
+      {/* Hold the page back until the visitor has chosen (see LostTune). */}
+      <script
+        dangerouslySetInnerHTML={{ __html: "document.documentElement.dataset.stage='loading'" }}
+      />
       <LostTune />
-      <main className="relative z-10 flex min-h-dvh flex-col justify-between px-gutter py-5 lg:py-7">
+      <main data-gated className="relative z-10 flex min-h-dvh flex-col justify-between px-gutter py-5 lg:py-7">
         <div className="mx-auto flex w-full max-w-(--grid-max) items-center justify-between">
           <Link href="/" className="label">
             {SITE.name}
@@ -45,12 +50,12 @@ export default function NotFound() {
           </h1>
           <div className="mt-12 flex flex-col gap-10 lg:mt-16 lg:flex-row lg:items-end lg:justify-between">
             <p className="max-w-md text-lg leading-relaxed text-muted">
-              This page isn’t part of the octave — it may have moved, or it never existed. The sand can’t find its
-              lines here either.
-              <span className="mt-4 block text-base">Listen: the scale climbs Sa to Ni, and never quite lands.</span>
+              This page doesn’t exist, or it has moved.
+              <span className="mt-4 block text-base">One note in the scale here is wrong.</span>
+              <WrongNoteLine className="mt-1 block text-base text-accent" />
             </p>
             <ReturnToSa className="text-2xl font-semibold tracking-tight text-accent">
-              <span className="ulink">Return to Sa ↗</span>
+              <span className="ulink">Return to Sa</span> <span className="arrow" data-dir="ne" aria-hidden="true">↗</span>
             </ReturnToSa>
           </div>
         </div>

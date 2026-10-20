@@ -9,7 +9,7 @@
  */
 export default function ReadingVeil() {
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[1]">
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-1">
       <div className="reading-veil absolute inset-0" />
       <div className="plate-fade absolute inset-0" />
     </div>

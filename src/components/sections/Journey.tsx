@@ -15,24 +15,25 @@ export default function Journey() {
             </h2>
           </div>
           <div className="hidden items-end gap-4 lg:col-span-4 lg:col-start-9 lg:flex">
-            <div className="relative aspect-[4/5] flex-1 overflow-hidden rounded-[2px]" data-reveal="image">
+            <div className="relative aspect-4/5 flex-1 overflow-hidden rounded-xs" data-reveal="image">
               <Image src="/img/atelier-material.jpg" alt="Material samples — stone, terracotta and timber" fill sizes="16vw" className="object-cover" />
             </div>
-            <div className="relative mb-16 aspect-[4/5] flex-1 overflow-hidden rounded-[2px]" data-reveal="image" data-delay="0.2">
+            <div className="relative mb-16 aspect-4/5 flex-1 overflow-hidden rounded-xs" data-reveal="image" data-delay="0.2">
               <Image src="/img/atelier-colour.jpg" alt="Colour study with a Josef Albers quote" fill sizes="16vw" className="object-cover" />
             </div>
           </div>
         </div>
 
-        <ol className="mt-20 lg:mt-28">
+        <ol className="mt-20 border-b border-line lg:mt-28" data-strings>
           {journey.map((j) => (
             <li
               key={j.title}
-              className="group grid gap-3 border-t border-line py-9 transition-colors duration-700 last:border-b hover:border-accent lg:grid-cols-12 lg:items-baseline lg:gap-8 lg:py-12"
+              className="grid gap-3 py-9 lg:grid-cols-12 lg:items-baseline lg:gap-8 lg:py-12"
               data-reveal
+              data-string
             >
               <span className="label text-accent lg:col-span-2">{j.when}</span>
-              <h3 className="font-heading text-2xl leading-tight tracking-tight transition-transform duration-700 ease-out group-hover:translate-x-3 sm:text-3xl lg:col-span-5 lg:text-[2.1rem]">
+              <h3 data-string-title className="font-heading text-2xl leading-tight tracking-tight sm:text-3xl lg:col-span-5 lg:text-[2.1rem]">
                 {j.title}
               </h3>
               <div className="lg:col-span-5">

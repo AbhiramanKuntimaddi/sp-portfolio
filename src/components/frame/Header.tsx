@@ -1,64 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { SITE } from "@/lib/content";
-import { getLenis, glide, withLenis } from "@/lib/smoothScroll";
-import { onSound, resonance } from "@/lib/resonance";
-import { setSoundOn } from "@/lib/sound";
-
-/**
- * Glide to a chapter by its id. Buttons call this instead of "#id" links, so
- * the address never picks up a hash.
- */
-export function scrollToSection(id: string) {
-  const target = document.getElementById(id);
-  if (!target) return;
-  const lenis = getLenis();
-  if (!lenis) {
-    target.scrollIntoView({ behavior: "smooth" });
-    return;
-  }
-  // Longer journeys take a little longer, but never drag.
-  const distance = Math.abs(target.getBoundingClientRect().top) / window.innerHeight;
-  lenis.scrollTo(target, { duration: Math.min(1.1 + distance * 0.22, 2.6), easing: glide, lock: true });
-}
-
-export function SoundToggle({ className = "" }: { className?: string }) {
-  const [state, setState] = useState({ on: true, audible: false });
-  useEffect(() => {
-    const sync = () => setState({ on: resonance.soundOn, audible: resonance.audible });
-    sync();
-    return onSound(sync);
-  }, []);
-
-  const playing = state.on && state.audible;
-  const label = !state.on ? "Sound off" : state.audible ? "Sound on" : "Tap to hear";
-
-  return (
-    <button
-      type="button"
-      data-sound-toggle
-      onClick={() => setSoundOn(!resonance.soundOn)}
-      aria-pressed={state.on}
-      aria-label={state.on ? "Turn sound off" : "Turn sound on"}
-      className={`label group inline-flex items-center gap-3 ${className}`}
-    >
-      <span className="flex h-3 items-end gap-0.75" aria-hidden="true">
-        {[0.55, 1, 0.75, 0.4].map((h, i) => (
-          <span
-            key={i}
-            className="h-full w-px origin-bottom bg-current transition-transform duration-500"
-            style={{
-              transform: `scaleY(${playing ? h : 0.18})`,
-              animation: playing ? `sound-bar 1.${2 + i}s ease-in-out ${i * 0.15}s infinite alternate` : "none",
-            }}
-          />
-        ))}
-      </span>
-      <span className="ulink">{label}</span>
-    </button>
-  );
-}
+import { scrollToSection, withLenis } from "@/lib/scroll";
+import SoundToggle from "./SoundToggle";
 
 /*
  * The header gets out of the way: it rests over the hero, slides up as you
@@ -124,7 +69,7 @@ export default function Header() {
           onClick={() => scrollToSection("contact")}
           className="label group hidden shrink-0 cursor-pointer lg:inline"
         >
-          <span className="ulink">Say hello</span> →
+          <span className="ulink">Say hello</span> <span className="arrow" data-dir="e" aria-hidden="true">→</span>
         </button>
       </div>
     </header>
