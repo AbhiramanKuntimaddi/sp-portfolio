@@ -125,8 +125,12 @@ export default function Footer() {
                     aria-label={`Play ${s.name}, ${Math.round(SA_HZ * s.ratio)} Hz`}
                     // Pointers play on press (above); this is for the keyboard.
                     onClick={(e) => e.detail === 0 && sound(i, 1)}
-                    className="group relative flex h-20 w-full cursor-pointer flex-col items-center justify-start pt-1"
+                    className="group relative flex h-20 w-full md:h-24 cursor-pointer flex-col items-center justify-start pt-1"
                   >
+                    {/* Its frequency, above its name — clear of the script's tall swashes. */}
+                    <span className="label mb-2 whitespace-nowrap md:mb-5 text-[0.6rem] leading-none text-muted/70 tabular-nums transition-colors duration-300 group-hover:text-accent group-focus-visible:text-accent sm:text-[0.65rem]" aria-hidden="true">
+                      {Math.round(SA_HZ * s.ratio)} Hz
+                    </span>
                     {/* Phones get the short letters (S R G M…): the script names'
                         swashes collided at eight to a phone's width. */}
                     <span className="label text-base leading-none text-muted transition-colors duration-300 group-hover:text-accent group-focus-visible:text-accent md:hidden">
@@ -134,10 +138,6 @@ export default function Footer() {
                     </span>
                     <span className="hidden font-display text-2xl leading-none text-muted transition-colors duration-300 group-hover:text-accent group-focus-visible:text-accent md:inline">
                       {s.name}
-                    </span>
-                    {/* Its frequency, shown while hovered. */}
-                    <span className="label mt-1.5 text-[0.65rem] text-muted opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true">
-                      {Math.round(SA_HZ * s.ratio)} Hz
                     </span>
                     {/* The fret: a small mark where the swara sits on the string. */}
                     <span className="mt-auto mb-4 h-2 w-px bg-line transition-colors duration-300 group-hover:bg-accent" aria-hidden="true" />
