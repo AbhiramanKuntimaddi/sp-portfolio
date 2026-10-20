@@ -124,17 +124,12 @@ export function mandolinPhrase(stage: Stage, notes: RagaNote[], perf: Performanc
     const picks = held > 0.7 ? Math.floor((held - 0.1) / 0.085) : 1;
     for (let p = 0; p < picks; p++) {
       const at = t + p * 0.085;
-      // The second string of the course is a shade quieter and only a cent
-      // apart, so the pair reads as one note, not two players.
-      const shade = (Math.random() - 0.5) * 2;
+      // The second string of the course is quieter and in exact unison, so
+      // the pair reads as one note, not two players.
       const bend = Math.floor(Math.random() * 2 ** 31);
-      [
-        { detune: -0.6, gain: 1 },
-        { detune: 0.6, gain: 0.45 },
-      ].forEach(({ detune, gain }, string) => {
+      [1, 0.45].forEach((gain, string) => {
         const src = ctx.createBufferSource();
         src.buffer = mandolinBuffer(ctx, st + 12);
-        src.detune.value = detune + shade;
         const g = ctx.createGain();
         // Tremolo picks are lighter, and never quite even.
         const v = gain * level * perf.force[k] * (p === 0 ? 1 : 0.5 + 0.12 * Math.random());
@@ -164,14 +159,9 @@ export function mandolinPluck(stage: Stage, st: number, at: number, velocity = 1
   const send = ctx.createGain();
   send.gain.value = 0.35;
   panner.connect(send).connect(stage.room);
-  const shade = (Math.random() - 0.5) * 2;
-  [
-    { detune: -0.6, gain: 1 },
-    { detune: 0.6, gain: 0.45 },
-  ].forEach(({ detune, gain }, string) => {
+  [1, 0.45].forEach((gain, string) => {
     const src = ctx.createBufferSource();
     src.buffer = mandolinBuffer(ctx, st + 12);
-    src.detune.value = detune + shade;
     const g = ctx.createGain();
     g.gain.value = 0.32 * gain * velocity;
     src.connect(g).connect(panner);
@@ -218,7 +208,7 @@ const VIOLIN: Voice = {
   ],
   lowpass: 5200,
   noise: 0.025,
-  vibrato: { rate: 5.6, depth: 14 },
+  vibrato: { rate: 5.6, depth: 8 },
   attack: 0.09,
   room: 0.5,
 };
@@ -240,7 +230,7 @@ const NADASWARAM: Voice = {
   ],
   lowpass: 6500,
   noise: 0.035,
-  vibrato: { rate: 6.2, depth: 9 },
+  vibrato: { rate: 6.2, depth: 5 },
   attack: 0.05,
   room: 0.42,
 };
@@ -304,7 +294,7 @@ function sustainedPhrase(stage: Stage, voice: Voice, notes: RagaNote[], perf: Pe
     const o = ctx.createOscillator();
     o.frequency.value = rate;
     const g = ctx.createGain();
-    g.gain.value = i === 0 ? 3.5 : 2;
+    g.gain.value = i === 0 ? 1 : 0.6;
     o.connect(g);
     return { o, g };
   });
@@ -394,10 +384,10 @@ const tamburaCache = new Map<number, AudioBuffer>();
  * ring, then the jawari: the curved bridge that makes a tambura buzz. Here
  * the string's own sound is folded through a soft saturation that blooms a
  * moment after the pluck and fades slowly, so the upper harmonics swell and
- * shimmer the way a tambura's do.
+ * shimmer the way a tambura's do. `buzz` is how much (0–1).
  */
-function tamburaBuffer(ctx: AudioContext, st: number) {
-  const key = Math.round(st * 1000);
+function tamburaBuffer(ctx: AudioContext, st: number, buzz: number) {
+  const key = Math.round(st * 1000) * 100 + Math.round(buzz * 10);
   const hit = tamburaCache.get(key);
   if (hit) return hit;
   const sr = ctx.sampleRate;
@@ -436,7 +426,7 @@ function tamburaBuffer(ctx: AudioContext, st: number) {
     // The jawari: blooms over the first ~0.4 s, then fades with the string.
     const time = i / sr;
     const bloom = Math.min(1, time / 0.5) * Math.exp(-time / 5);
-    data[i] = a + bloom * (Math.tanh(a * 4) / 4 - a);
+    data[i] = a + buzz * bloom * (Math.tanh(a * 4) / 4 - a);
     peak = Math.max(peak, Math.abs(data[i]));
   }
   const norm = peak > 0 ? 0.9 / peak : 1;
@@ -456,8 +446,14 @@ function tamburaBuffer(ctx: AudioContext, st: number) {
  * Start a tambura: its strings (`pitches`, in plucking order) plucked one
  * after another, round and round, never quite evenly, until stopped. Returns
  * a handle whose `stop(at)` lets it fade from `at`.
+ *
+ * `pure`: whether the raga above it is in classical tuning. A tambura's buzz
+ * is made of Sa's natural harmonics, which agree with classical tuning but
+ * not with equal temperament (its Ga and Dha sit 14–16 cents sharp of them),
+ * so under an equal-tempered raga the buzz is kept low and the tone darker.
  */
-export function startTambura(stage: Stage, pitches: number[], at: number, level = 0.075) {
+export function startTambura(stage: Stage, pitches: number[], at: number, pure: boolean, level = 0.075) {
+  const buzz = pure ? 0.5 : 0.12;
   const { ctx } = stage;
   const bus = ctx.createGain();
   bus.gain.setValueAtTime(0, at);
@@ -470,14 +466,19 @@ export function startTambura(stage: Stage, pitches: number[], at: number, level 
   body.gain.value = 3;
   const shimmer = ctx.createBiquadFilter();
   shimmer.type = "peaking";
-  shimmer.frequency.value = 1600;
+  // Around the 6th harmonic (a pure Pa), not the 5th or 7th, which sit 14
+  // and 31 cents from equal-tempered Ga and Ni and sounded sour against them.
+  shimmer.frequency.value = 1320;
   shimmer.Q.value = 1.1;
-  shimmer.gain.value = 4;
-  bus.connect(body).connect(shimmer).connect(stage.out);
+  shimmer.gain.value = pure ? 4 : 1.5;
+  const dark = ctx.createBiquadFilter();
+  dark.type = "lowpass";
+  dark.frequency.value = pure ? 6000 : 1500;
+  bus.connect(body).connect(shimmer).connect(dark).connect(stage.out);
   const send = ctx.createGain();
   send.gain.value = 0.5;
-  shimmer.connect(send).connect(stage.room);
-  pitches.forEach((st) => tamburaBuffer(ctx, st));
+  dark.connect(send).connect(stage.room);
+  pitches.forEach((st) => tamburaBuffer(ctx, st, buzz));
 
   // Plucked slowly — about a second apart, a longer breath after the low Sa —
   // and ringing long, so it reads as one continuous drone under the raga
@@ -489,8 +490,7 @@ export function startTambura(stage: Stage, pitches: number[], at: number, level 
   const schedule = () => {
     while (next < Math.min(ctx.currentTime + 1, stopAt)) {
       const src = ctx.createBufferSource();
-      src.buffer = tamburaBuffer(ctx, pitches[i]);
-      src.detune.value = (Math.random() - 0.5) * 2;
+      src.buffer = tamburaBuffer(ctx, pitches[i], buzz);
       const g = ctx.createGain();
       g.gain.value = 0.85 + 0.25 * Math.random();
       src.connect(g).connect(bus);

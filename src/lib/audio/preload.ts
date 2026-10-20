@@ -39,6 +39,8 @@ export const PRELOAD_DRONE = "tambura" as Drone;
 /**
  * How the raga and its drone are tuned: "classical", the pure ratios of
  * Carnatic shruti with every swara in tune against the Sa–Pa drone, or
- * "equal", the piano's equal temperament (see ./tuning.ts).
+ * "equal", the piano's equal temperament (see ./tuning.ts). Over a tambura
+ * or sruti box, "classical" is the one that sounds in tune: the drone rings
+ * Sa's natural harmonics, and equal-tempered Ga and Dha sit sharp of them.
  */
-export const PRELOAD_TUNING = "equal" as Tuning;
+export const PRELOAD_TUNING = "classical" as Tuning;

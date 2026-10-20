@@ -33,8 +33,9 @@ import { tune } from "./tuning";
  *
  *  - A string-section pad (think a quiet violin/cello section, bowed): each
  *    chapter has its own chord, and the harmony moves as you scroll —
- *    I → V → vi → IV → I → ii → V7 → I in A major, ending where it began,
- *    an octave up.
+ *    I → V → vi → IV → I → ii → V → I in A major, ending where it began,
+ *    an octave up. Plain triads, each holding the chapter's own swara, so
+ *    the note you hear always belongs to the chord under it.
  *  - A plucked string (between nylon guitar and harp) plays each chapter's
  *    note as you arrive: up the scale scrolling down, back down scrolling up,
  *    and every note in between as a quick arpeggio when you jump.
@@ -43,17 +44,24 @@ import { tune } from "./tuning";
  * default) starts on the visitor's first gesture.
  */
 
-/** Chord voicings, in semitones from Sa (A3). One per chapter. */
+/**
+ * Chord voicings, in semitones from Sa (A3). One per chapter. (Sevenths and
+ * added ninths were tried: A maj7 under Sa and D maj7 under Ma put a note a
+ * semitone from the swara being played, and it sounded out of tune.)
+ */
 const CHORDS: number[][] = [
-  [-12, -5, 4, 11], //      Sa  · A maj7
-  [-17, -10, -1, 9], //     Re  · E add9
-  [-15, -8, 0, 7], //       Ga  · F♯m7
-  [-19, -12, -3, 4], //     Ma  · D maj7
-  [-17, -12, -8, 2], //     Pa  · A add9 over E
-  [-10, -7, -3, 4], //      Dha · Bm add9
-  [-17, -10, -1, 5], //     Ni  · E7, leaning home
-  [-12, -5, 4, 11, 14], //  Ṡa  · A maj9, opened out
+  [-12, -5, 4, 7], //       Sa  · A
+  [-17, -10, -5, -1], //    Re  · E
+  [-15, -8, -3, 0], //      Ga  · F♯m
+  [-19, -12, -7, -3], //    Ma  · D
+  [-17, -12, -8, -5], //    Pa  · A over E
+  [-10, -7, -3, 2], //      Dha · Bm
+  [-17, -10, -1, 2], //     Ni  · E, leaning home
+  [-12, -5, 0, 4, 7], //    Ṡa  · A, opened out
 ];
+
+/** The 404's chord: E7, the dominant that never resolves. */
+const LOST_V7 = [-17, -10, -1, 5];
 
 const hz = (semitones: number) => SA_HZ * Math.pow(2, semitones / 12);
 /** Where earlier versions remembered a mute; now only cleared. */
@@ -210,7 +218,6 @@ function veenaPluck(e: Engine, st: number, at: number, velocity: number, pan: nu
   const { ctx } = e;
   const src = ctx.createBufferSource();
   src.buffer = veenaBuffer(e, st);
-  src.detune.value = (Math.random() - 0.5) * 3;
   const g = ctx.createGain();
   g.gain.value = 0.5 * velocity;
   const p = ctx.createStereoPanner();
@@ -228,7 +235,7 @@ function veenaPluck(e: Engine, st: number, at: number, velocity: number, pan: nu
  * tune), otherwise from just below the note.
  */
 function applyGamaka(rate: AudioParam, at: number, kind: Gamaka, fromRatio?: number, span = 0.62) {
-  shapeGamaka(rate, kind, at, span, 1, fromRatio ?? Math.pow(2, -120 / 1200));
+  shapeGamaka(rate, kind, at, span, 1, fromRatio ?? null);
 }
 
 /** Pluck any pitch (semitones from Sa, fractions allowed — the 404's wrong notes). */
@@ -244,9 +251,6 @@ function pluckStep(
   halo = true,
 ) {
   const { ctx } = e;
-  // No two plucks quite alike: a cent or two either way (the same for the
-  // note and its halo, so they stay one string).
-  const detune = (Math.random() - 0.5) * 3;
   // The note, and — for the site's scroll notes — a soft octave above it a
   // breath later, a harp-like halo. A raga is played as one plain string.
   const layers = [{ st: step, gain: 0.55 * velocity, pan, delay: 0 }];
@@ -254,7 +258,6 @@ function pluckStep(
   layers.forEach((n) => {
     const src = ctx.createBufferSource();
     src.buffer = stringBuffer(e, n.st);
-    src.detune.value = detune;
     const g = ctx.createGain();
     g.gain.value = n.gain;
     const p = ctx.createStereoPanner();
@@ -272,18 +275,21 @@ function pluckStep(
   }, ms);
 }
 
-/** One bowed tone: three slightly detuned saws, like desks in a section. */
+/**
+ * One bowed tone: three saws a hair apart, like desks in a section. (They
+ * were ±7 cents apart, and the beating sounded out of tune.)
+ */
 function bowedVoice(e: Engine, semitones: number, at: number, level: number, attack = 2.4): Voice {
   const { ctx } = e;
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0, at);
   gain.gain.linearRampToValueAtTime(level, at + attack);
   gain.connect(e.pad);
-  const oscs = [-7, 0, 6].map((cents) => {
+  const oscs = [-2, 0, 2].map((cents) => {
     const o = ctx.createOscillator();
     o.type = "sawtooth";
     o.frequency.value = hz(semitones);
-    o.detune.value = cents + (Math.random() - 0.5) * 3;
+    o.detune.value = cents;
     const g = ctx.createGain();
     g.gain.value = 1 / 3;
     o.connect(g).connect(gain);
@@ -322,15 +328,16 @@ function release(voices: Voice[], t: number, tau: number, stopAfter: number) {
 function setTones(e: Engine, key: number, tones: number[], at: number) {
   if (e.chord?.index === key) return;
   const t = Math.max(at, e.ctx.currentTime);
-  // The old chord lets go while the new one swells in under it.
+  // The old chord lets go quickly while the new one swells in, so two
+  // different chords are never heard together for long.
   if (e.chord) {
-    release(e.chord.voices, t, 0.55, 3.2);
+    release(e.chord.voices, t, 0.28, 2);
     releasing.push(e.chord.voices);
   }
   // Never more than one chord ringing out behind the current one.
   while (releasing.length > 1) release(releasing.shift()!, t, 0.08, 0.5);
   const level = 0.09 / tones.length;
-  e.chord = { index: key, voices: tones.map((st) => bowedVoice(e, st, t, level, 1.4)) };
+  e.chord = { index: key, voices: tones.map((st) => bowedVoice(e, st, t, level, 1)) };
 }
 
 /** A soft hall: decaying stereo noise that darkens as it fades. */
@@ -450,7 +457,7 @@ function scheduleLost() {
 }
 
 function startLost(e: Engine, t: number) {
-  setTones(e, LOST_CHORD_KEY, CHORDS[6], t);
+  setTones(e, LOST_CHORD_KEY, LOST_V7, t);
   lostPasses = 0;
   lostNext = t + 0.5;
   window.clearInterval(lostTimer);
@@ -531,7 +538,7 @@ function startDrone(e: Engine, at: number, kind: "tambura" | "sruti" | "none", f
   drone = null;
   if (kind === "none") return;
   const pitches = (kind === "tambura" ? [fifth - 12, 0, 0, -12] : [-12, fifth - 12, 0]).map((st) => tune(st, PRELOAD_TUNING));
-  const voice = kind === "tambura" ? startTambura(stage(e), pitches, at) : startSruti(stage(e), pitches, at);
+  const voice = kind === "tambura" ? startTambura(stage(e), pitches, at, PRELOAD_TUNING === "classical") : startSruti(stage(e), pitches, at);
   drone = { key: `${kind}:${fifth}`, stop: voice.stop };
 }
 
@@ -660,7 +667,6 @@ function venuPhrase(e: Engine, notes: RagaNote[], perf: Performance, end: number
   breathGain.gain.value = 0.05;
   breath.connect(breathBand).connect(breathGain).connect(voice);
 
-  const cents = (hzv: number, c: number) => hzv * Math.pow(2, c / 1200);
   notes.forEach(({ st, gamaka }, k) => {
     const t = times[k];
     const target = f(st);
@@ -677,12 +683,12 @@ function venuPhrase(e: Engine, notes: RagaNote[], perf: Performance, end: number
     // fight and jump); a plain note gets a small scoop instead.
     const prev = k > 0 ? f(notes[k - 1].st) : null;
     const span = gamaka ? gamakaSpan(t, next) : null;
-    if (gamaka && span) shapeGamaka(pitch.offset, gamaka, t, span, target, prev ?? cents(target, -110));
+    if (gamaka && span) shapeGamaka(pitch.offset, gamaka, t, span, target, prev);
     else scoop(pitch.offset, t, target, prev, next - t);
     breathBand.frequency.setTargetAtTime(target * 2.2, t, 0.05);
     // Vibrato blooms only on notes held long enough to sing.
     vibratoDepth.gain.setValueAtTime(0, t);
-    if (next - t > 0.55) vibratoDepth.gain.linearRampToValueAtTime(target * 0.006, t + Math.min(0.6, next - t - 0.1));
+    if (next - t > 0.55) vibratoDepth.gain.linearRampToValueAtTime(target * 0.0035, t + Math.min(0.6, next - t - 0.1));
     window.setTimeout(() => {
       resonance.pulse = Math.min(1, resonance.pulse + 0.45);
     }, Math.max(0, (t - ctx.currentTime) * 1000));
@@ -822,7 +828,6 @@ function veenaPhrase(e: Engine, notes: RagaNote[], perf: Performance, level = 0.
     src.buffer = veenaBuffer(e, st);
     const g = ctx.createGain();
     const v = level * perf.force[k];
-    src.detune.value = (Math.random() - 0.5) * 3;
     g.gain.setValueAtTime(v, t);
     // A new pluck damps the last one, as the finger moves on.
     if (k < notes.length - 1) g.gain.setTargetAtTime(0, next + 0.02, 0.08);

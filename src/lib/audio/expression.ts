@@ -8,10 +8,11 @@
  *    late, and a slowing as the phrase arrives on Sa;
  *  - dynamics: the samam and each anga leaned on, the arohana swelling to the
  *    top and the avarohana easing home, never two notes quite alike;
- *  - gamakas as smooth curves: a jaaru eases out of the previous swara and
- *    settles with a touch of overshoot; a kampita sways two or three times
- *    above the note, each sway smaller, at a slightly different speed every
- *    time.
+ *  - gamakas as smooth curves that always come to rest exactly on the
+ *    swara: a jaaru eases out of the previous swara and lands; a kampita
+ *    sways gently above the note once or twice, then holds it in tune.
+ *    (Wider sways, overshoots and scoops into every note were tried and
+ *    sounded out of tune — the note must be heard squarely on pitch.)
  */
 
 /** A phrase as performed: when each note begins and how firmly it's played (0–1). */
@@ -74,16 +75,16 @@ export function gamaka(
 ) {
   const steps = Math.max(24, Math.round(span * 120));
   const curve = new Float32Array(steps);
-  // The slide: a held start on the previous swara, then an eased glide in
-  // the pitch (log) domain — fast in the middle, gentle at both ends.
-  const hold = 0.08 + 0.04 * random();
-  const land = (kind === "jaaru" ? 0.55 : 0.32) * (0.9 + 0.2 * random());
+  // The slide: a brief start on the previous swara, then an eased glide in
+  // the pitch (log) domain onto the note — landed within the first third.
+  const hold = 0.04 + 0.03 * random();
+  const land = 0.28 + 0.06 * random();
   const ratio = from === null ? 1 : from / base;
-  // The sway: two or three cycles above the note, each smaller than the last.
-  const swayFrom = land;
-  const cycles = Math.max(2, Math.round(span * (1 - swayFrom) * (5.2 + 1.2 * random())));
-  const depth = 38 * (0.85 + 0.3 * random());
-  const overshoot = 7 * (0.6 + 0.8 * random());
+  // The sway (kampita only): one or two gentle rises above the note, the
+  // second smaller, finished by 70% of the note — the rest is held in tune.
+  const swayEnd = 0.7;
+  const cycles = span > 0.55 ? 2 : 1;
+  const depth = 12 * (0.85 + 0.3 * random());
 
   for (let i = 0; i < steps; i++) {
     const x = i / (steps - 1);
@@ -91,16 +92,9 @@ export function gamaka(
     if (x < hold) v = ratio;
     else if (x < land) v = Math.pow(ratio, 1 - smoother((x - hold) / (land - hold)));
     else v = 1;
-    if (x >= land) {
-      const y = (x - land) / (1 - land);
-      if (kind === "kampita") {
-        // 0 → depth → 0, cycles times, shrinking as it goes.
-        const decay = 1 - 0.65 * y;
-        v *= cents(depth * decay * (0.5 - 0.5 * Math.cos(2 * Math.PI * cycles * y)));
-      } else if (from !== null) {
-        // Arrive with a touch of overshoot, then settle.
-        v *= cents(overshoot * Math.sin(Math.PI * Math.min(1, y * 1.6)) * (1 - y));
-      }
+    if (kind === "kampita" && x >= land && x < swayEnd) {
+      const y = (x - land) / (swayEnd - land);
+      v *= cents(depth * (1 - 0.5 * y) * (0.5 - 0.5 * Math.cos(2 * Math.PI * cycles * y)));
     }
     curve[i] = base * v;
   }
@@ -142,16 +136,17 @@ export function seeded(seed: number) {
 }
 
 /**
- * For sustained voices: the small scoop a singer or violinist makes into a
- * plain note — from a little below, eased in over a few dozen milliseconds.
+ * For sustained voices, a plain (un-ornamented) note: a quick legato glide
+ * from the previous swara, landing squarely on the new one in a few dozen
+ * milliseconds — no scoop from below, which sounded flat.
  */
 export function scoop(param: AudioParam, at: number, base: number, from: number | null, room: number) {
-  const span = Math.min(0.07 + 0.03 * Math.random(), room - 0.012);
-  if (span < 0.03) {
+  const span = Math.min(0.035, room - 0.012);
+  if (from === null || span < 0.015) {
     param.setValueAtTime(base, at);
     return;
   }
-  const start = from === null ? base * cents(-22) : Math.max(Math.min(from, base * cents(20)), base * cents(-30));
+  const start = from;
   const steps = 16;
   const curve = new Float32Array(steps);
   for (let i = 0; i < steps; i++) curve[i] = start * Math.pow(base / start, smoother(i / (steps - 1)));
